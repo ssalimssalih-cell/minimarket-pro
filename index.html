@@ -1,0 +1,2287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniMarket Pro - Gestion de magasin</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Theme color -->
+    <meta name="theme-color" content="#1e3a8a">
+    
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <div class="bg-blue p-2 rounded-circle me-2">
+                    <i class="fas fa-store text-white"></i>
+                </div>
+                <span class="brand-text">MiniMarket Pro</span>
+            </a>
+            <button class="btn btn-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu">
+                <i class="fas fa-bars me-2"></i>Menu
+            </button>
+        </div>
+    </nav>
+
+    <!-- Offcanvas Menu -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasMenu">
+        <div class="offcanvas-header">
+            <div class="d-flex align-items-center">
+                <div class="menu-icon-header me-3">
+                    <i class="fas fa-store"></i>
+                </div>
+                <h5 class="offcanvas-title">Menu Principal</h5>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <div class="list-group">
+                <a href="#" class="list-group-item" data-menu="pos">
+                    <div class="menu-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div>
+                        <h6>POS</h6>
+                        <small>Point de vente</small>
+                    </div>
+                </a>
+                <a href="#" class="list-group-item" data-menu="categories">
+                    <div class="menu-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div>
+                        <h6>Catégories</h6>
+                        <small>Gérer les catégories</small>
+                    </div>
+                </a>
+                <a href="#" class="list-group-item" data-menu="products">
+                    <div class="menu-icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div>
+                        <h6>Produits</h6>
+                        <small>Inventaire des produits</small>
+                    </div>
+                </a>
+                <a href="#" class="list-group-item" data-menu="suppliers">
+                    <div class="menu-icon">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <div>
+                        <h6>Fournisseurs</h6>
+                        <small>Gérer les fournisseurs</small>
+                    </div>
+                </a>
+                <a href="#" class="list-group-item" data-menu="customers">
+                    <div class="menu-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h6>Clients</h6>
+                        <small>Gérer les clients</small>
+                    </div>
+                </a>
+                <a href="#" class="list-group-item" data-menu="sales">
+                    <div class="menu-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <h6>Ventes</h6>
+                        <small>Historique des ventes</small>
+                    </div>
+                </a>
+                <a href="#" class="list-group-item" data-menu="credits">
+                    <div class="menu-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div>
+                        <h6>Crédits</h6>
+                        <small>Gestion des crédits</small>
+                    </div>
+                </a>
+                <a href="#" class="list-group-item" data-menu="charges">
+                    <div class="menu-icon">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div>
+                        <h6>Charges</h6>
+                        <small>Dépenses et charges</small>
+                    </div>
+                </a>
+                <a href="#" class="list-group-item" data-menu="statistics">
+                    <div class="menu-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div>
+                        <h6>Statistiques</h6>
+                        <small>Analyses et rapports</small>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container-fluid main-content">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="page-title">Tableau de bord</h1>
+            </div>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6>Ventes du jour</h6>
+                                <h3 id="todaySales">12 500 DH</h3>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-shopping-bag"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6>Produits en stock</h6>
+                                <h3 id="totalProducts">1 234</h3>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-boxes"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6>Crédits en cours</h6>
+                                <h3 id="activeCredits">8 750 DH</h3>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-hand-holding-usd"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6>Clients</h6>
+                                <h3 id="totalCustomers">567</h3>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Dernières ventes</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Produit</th>
+                                        <th>Quantité</th>
+                                        <th>Total</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentSales"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Alertes stock</h5>
+                    </div>
+                    <div class="card-body" id="stockAlerts"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Categories -->
+    <div class="modal fade" id="categoriesModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-tags"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Gestion des Catégories</span>
+                                <small>Gérez vos catégories de produits</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <button class="btn btn-primary" id="addCategoryBtn">
+                            <i class="fas fa-plus-circle me-2"></i>Nouvelle Catégorie
+                        </button>
+                        <button class="btn btn-outline-primary" id="importCategoriesBtn">
+                            <i class="fas fa-file-import me-2"></i>Importer
+                        </button>
+                        <button class="btn btn-outline-primary" id="exportCategoriesBtn">
+                            <i class="fas fa-file-export me-2"></i>Exporter
+                        </button>
+                        <button class="btn btn-outline-primary" id="listCategoriesBtn">
+                            <i class="fas fa-list me-2"></i>Liste
+                        </button>
+                    </div>
+
+                    <!-- Add Form -->
+                    <div class="card add-form" id="categoryFormCard" style="display: none;">
+                        <div class="card-body">
+                            <h6>
+                                <i class="fas fa-plus-circle me-2"></i>
+                                Ajouter une catégorie
+                            </h6>
+                            <form id="categoryForm">
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        Nom de la catégorie <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="categoryName" 
+                                           placeholder="Ex: Électronique, Alimentation, etc." required>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Enregistrer
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="cancelCategoryBtn">
+                                        <i class="fas fa-times me-2"></i>Annuler
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Categories Table -->
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="categoriesTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nom</th>
+                                        <th class="text-center">Nb Produits</th>
+                                        <th class="text-end">Chiffre d'affaire</th>
+                                        <th class="text-end">Profit</th>
+                                        <th>Date création</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="categoriesTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Total: <span id="totalCategories">0</span> catégories
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Suppliers -->
+    <div class="modal fade" id="suppliersModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-truck"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Gestion des Fournisseurs</span>
+                                <small>Gérez vos fournisseurs et partenaires</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <button class="btn btn-primary" id="addSupplierBtn">
+                            <i class="fas fa-plus-circle me-2"></i>Nouveau Fournisseur
+                        </button>
+                        <button class="btn btn-outline-primary" id="importSuppliersBtn">
+                            <i class="fas fa-file-import me-2"></i>Importer
+                        </button>
+                        <button class="btn btn-outline-primary" id="exportSuppliersBtn">
+                            <i class="fas fa-file-export me-2"></i>Exporter
+                        </button>
+                        <button class="btn btn-outline-primary" id="listSuppliersBtn">
+                            <i class="fas fa-list me-2"></i>Liste
+                        </button>
+                    </div>
+
+                    <!-- Add Form -->
+                    <div class="card add-form" id="supplierFormCard" style="display: none;">
+                        <div class="card-body">
+                            <h6>
+                                <i class="fas fa-plus-circle me-2"></i>
+                                Ajouter un fournisseur
+                            </h6>
+                            <form id="supplierForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Nom du contact <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="supplierContactName" 
+                                               placeholder="Nom et prénom" required>
+                                        <small class="text-muted">Champ obligatoire</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Société / Entreprise
+                                        </label>
+                                        <input type="text" class="form-control" id="supplierCompany" 
+                                               placeholder="Nom de la société (optionnel)">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Téléphone
+                                        </label>
+                                        <input type="tel" class="form-control" id="supplierPhone" 
+                                               placeholder="06 xx xx xx xx (optionnel)">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            WhatsApp
+                                        </label>
+                                        <input type="tel" class="form-control" id="supplierWhatsapp" 
+                                               placeholder="06 xx xx xx xx (optionnel)">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        Adresse
+                                    </label>
+                                    <textarea class="form-control" id="supplierAddress" 
+                                              rows="2" placeholder="Adresse complète (optionnel)"></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Email
+                                        </label>
+                                        <input type="email" class="form-control" id="supplierEmail" 
+                                               placeholder="email@exemple.com (optionnel)">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Chiffre d'affaires
+                                        </label>
+                                        <input type="number" class="form-control" id="supplierRevenue" 
+                                               placeholder="0 DH" value="0">
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Enregistrer
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="cancelSupplierBtn">
+                                        <i class="fas fa-times me-2"></i>Annuler
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Suppliers Table -->
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="suppliersTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Contact</th>
+                                        <th>Société</th>
+                                        <th>Téléphone</th>
+                                        <th>WhatsApp</th>
+                                        <th>Adresse</th>
+                                        <th class="text-end">Chiffre d'affaires</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="suppliersTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Total: <span id="totalSuppliers">0</span> fournisseurs
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Customers -->
+    <div class="modal fade" id="customersModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Gestion des Clients</span>
+                                <small>Gérez vos clients et fidélisez-les</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <button class="btn btn-primary" id="addCustomerBtn">
+                            <i class="fas fa-plus-circle me-2"></i>Nouveau Client
+                        </button>
+                        <button class="btn btn-outline-primary" id="importCustomersBtn">
+                            <i class="fas fa-file-import me-2"></i>Importer
+                        </button>
+                        <button class="btn btn-outline-primary" id="exportCustomersBtn">
+                            <i class="fas fa-file-export me-2"></i>Exporter
+                        </button>
+                        <button class="btn btn-outline-primary" id="listCustomersBtn">
+                            <i class="fas fa-list me-2"></i>Liste
+                        </button>
+                    </div>
+
+                    <!-- Add Form -->
+                    <div class="card add-form" id="customerFormCard" style="display: none;">
+                        <div class="card-body">
+                            <h6>
+                                <i class="fas fa-plus-circle me-2"></i>
+                                Ajouter un client
+                            </h6>
+                            <form id="customerForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Nom complet <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="customerName" 
+                                               placeholder="Nom et prénom" required>
+                                        <small class="text-muted">Champ obligatoire</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Genre
+                                        </label>
+                                        <select class="form-control" id="customerGender">
+                                            <option value="">Sélectionner</option>
+                                            <option value="MASCULIN">Masculin</option>
+                                            <option value="FÉMININ">Féminin</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Téléphone
+                                        </label>
+                                        <input type="tel" class="form-control" id="customerPhone" 
+                                               placeholder="06 xx xx xx xx (optionnel)">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            WhatsApp
+                                        </label>
+                                        <input type="tel" class="form-control" id="customerWhatsapp" 
+                                               placeholder="06 xx xx xx xx (optionnel)">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        Adresse
+                                    </label>
+                                    <textarea class="form-control" id="customerAddress" 
+                                              rows="2" placeholder="Adresse complète (optionnel)"></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Chiffre d'affaires
+                                        </label>
+                                        <input type="number" class="form-control" id="customerRevenue" 
+                                               placeholder="0 DH" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Profit
+                                        </label>
+                                        <input type="number" class="form-control" id="customerProfit" 
+                                               placeholder="0 DH" value="0">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Crédit
+                                        </label>
+                                        <input type="number" class="form-control" id="customerCredit" 
+                                               placeholder="0 DH" value="0">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        Description / Notes
+                                    </label>
+                                    <textarea class="form-control" id="customerDescription" 
+                                              rows="2" placeholder="Informations complémentaires sur le client"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Enregistrer
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="cancelCustomerBtn">
+                                        <i class="fas fa-times me-2"></i>Annuler
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Customers Table -->
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="customersTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nom</th>
+                                        <th>Genre</th>
+                                        <th>Adresse</th>
+                                        <th>Téléphone</th>
+                                        <th>WhatsApp</th>
+                                        <th class="text-end">CA</th>
+                                        <th class="text-end">Profit</th>
+                                        <th class="text-end">Crédit</th>
+                                        <th>Description</th>
+                                        <th>Date création</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customersTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Total: <span id="totalCustomers">0</span> clients
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Products AMÉLIORÉ avec recherche et tris -->
+    <!-- Modal Products AMÉLIORÉ avec recherche, tris ET DATE CRÉATION -->
+    <div class="modal fade" id="productsModal" tabindex="-1">
+        <div class="modal-dialog modal-4xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Gestion des Produits</span>
+                                <small>Gérez votre inventaire de produits</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <button class="btn btn-primary" id="addProductBtn">
+                            <i class="fas fa-plus-circle me-2"></i>Nouveau Produit
+                        </button>
+                        <button class="btn btn-outline-primary" id="importProductsBtn">
+                            <i class="fas fa-file-import me-2"></i>Importer
+                        </button>
+                        <button class="btn btn-outline-primary" id="exportProductsBtn">
+                            <i class="fas fa-file-export me-2"></i>Exporter
+                        </button>
+                        <button class="btn btn-outline-primary" id="listProductsBtn">
+                            <i class="fas fa-list me-2"></i>Liste
+                        </button>
+                    </div>
+
+                    <!-- Add Form -->
+                    <div class="card add-form" id="productFormCard" style="display: none;">
+                        <div class="card-body">
+                            <h6>
+                                <i class="fas fa-plus-circle me-2"></i>
+                                Ajouter un produit
+                            </h6>
+                            <form id="productForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Nom du produit <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="productName" 
+                                               placeholder="Nom du produit" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Catégorie <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-control" id="productCategory" required>
+                                            <option value="">Sélectionner une catégorie</option>
+                                            <!-- Les options seront chargées dynamiquement -->
+                                        </select>
+                                        <small class="text-muted">Vous pouvez taper pour rechercher</small>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Box Unit
+                                        </label>
+                                        <input type="number" class="form-control" id="productBoxUnit" 
+                                               placeholder="Ex: 12" value="1" min="1" step="1">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Box Price (DH)
+                                        </label>
+                                        <input type="number" class="form-control" id="productBoxPrice" 
+                                               placeholder="0.00" value="0" min="0" step="0.01">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Price Unit (DH)
+                                        </label>
+                                        <input type="number" class="form-control" id="productPriceUnit" 
+                                               placeholder="Calculé automatiquement" readonly style="background-color: var(--gray-100);">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Price Sell (DH) <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="number" class="form-control" id="productPriceSell" 
+                                               placeholder="0.00" value="0" min="0" step="0.01" required>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Profit (DH)
+                                        </label>
+                                        <input type="number" class="form-control" id="productProfit" 
+                                               placeholder="Calculé automatiquement" readonly style="background-color: var(--gray-100);">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Marque
+                                        </label>
+                                        <input type="text" class="form-control" id="productBrand" 
+                                               placeholder="Marque du produit">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Unité
+                                        </label>
+                                        <select class="form-control" id="productUnit">
+                                            <option value="PIECE">Pièce</option>
+                                            <option value="KG">Kilogramme</option>
+                                            <option value="LITRE">Litre</option>
+                                            <option value="BOITE">Boîte</option>
+                                            <option value="SACHET">Sachet</option>
+                                            <option value="CARTON">Carton</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Fournisseur
+                                        </label>
+                                        <select class="form-control" id="productSupplier">
+                                            <option value="">Sélectionner un fournisseur</option>
+                                            <!-- Les options seront chargées dynamiquement -->
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Date d'expiration
+                                        </label>
+                                        <input type="date" class="form-control" id="productExpiration">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Stock actuel <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="number" class="form-control" id="productCurrentStock" 
+                                               placeholder="0" value="0" min="0" step="1" required>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Stock vendu
+                                        </label>
+                                        <input type="number" class="form-control" id="productSoldStock" 
+                                               placeholder="0" value="0" min="0" step="1">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">
+                                            Description
+                                        </label>
+                                        <input type="text" class="form-control" id="productDescription" 
+                                               placeholder="Description optionnelle">
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Enregistrer
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="cancelProductBtn">
+                                        <i class="fas fa-times me-2"></i>Annuler
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label">Recherche produit</label>
+                                    <input type="text" class="form-control" id="productSearch" 
+                                           placeholder="Nom, marque, catégorie, fournisseur...">
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100" id="applyProductFilter">
+                                        <i class="fas fa-search me-2"></i>Rechercher
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Products Table avec tris et DATE CRÉATION -->
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="productsTable">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-sort="id">ID <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="name">Nom <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="category">Catégorie <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="boxUnit">Box Unit <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="boxPrice">Box Price <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="priceUnit">Price Unit <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="priceSell">Price Sell <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="profit">Profit <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="brand">Marque <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="unit">Unité <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="supplier">Fournisseur <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="expiration">Expiration <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="stock">Stock <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="soldStock">Vendu <i class="fas fa-sort ms-1"></i></th>
+                                        <th>Description</th>
+                                        <th class="sortable" data-sort="created_at">Date création <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Total: <span id="totalProducts">0</span> produits
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal POS -->
+    <div class="modal fade" id="posModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Point de Vente (POS)</span>
+                                <small id="posStepIndicator">Étape 1: Sélection client</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <button class="btn btn-primary" id="newSellBtn">
+                            <i class="fas fa-plus-circle me-2"></i>Nouvelle Vente
+                        </button>
+                        <button class="btn btn-outline-primary" id="importSalesBtn">
+                            <i class="fas fa-file-import me-2"></i>Importer
+                        </button>
+                        <button class="btn btn-outline-primary" id="exportSalesBtn">
+                            <i class="fas fa-file-export me-2"></i>Exporter
+                        </button>
+                        <button class="btn btn-outline-primary" id="listSalesBtn">
+                            <i class="fas fa-list me-2"></i>Liste des ventes
+                        </button>
+                    </div>
+
+                    <!-- Steps Navigation -->
+                    <div class="steps-nav mb-4">
+                        <div class="d-flex justify-content-between">
+                            <div class="step-item active" id="step1" data-step="1">
+                                <div class="step-number">1</div>
+                                <div class="step-label">Client</div>
+                            </div>
+                            <div class="step-item" id="step2" data-step="2">
+                                <div class="step-number">2</div>
+                                <div class="step-label">Panier</div>
+                            </div>
+                            <div class="step-item" id="step3" data-step="3">
+                                <div class="step-number">3</div>
+                                <div class="step-label">Paiement</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 1: Client Selection -->
+                    <div id="step1Content" class="step-content active">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="mb-3">Sélectionner un client</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Client <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <select class="form-control" id="saleCustomer" required>
+                                            <option value="">Client Passager (par défaut)</option>
+                                            <!-- Les options seront chargées dynamiquement -->
+                                        </select>
+                                        <button class="btn btn-outline-primary" type="button" id="addQuickCustomerBtn" title="Ajouter un nouveau client">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">Vous pouvez taper pour rechercher un client ou ajouter un nouveau client</small>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button class="btn btn-primary" id="nextToCartBtn">
+                                        Suivant <i class="fas fa-arrow-right ms-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Add Customer Modal -->
+                    <div class="modal fade" id="quickAddCustomerModal" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Ajouter un client rapidement</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="quickCustomerForm">
+                                        <div class="mb-3">
+                                            <label class="form-label">Nom complet <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="quickCustomerName" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Téléphone</label>
+                                            <input type="tel" class="form-control" id="quickCustomerPhone">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">WhatsApp</label>
+                                            <input type="tel" class="form-control" id="quickCustomerWhatsapp">
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                                    <button type="button" class="btn btn-primary" id="saveQuickCustomerBtn">Enregistrer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Shopping Cart -->
+                    <div id="step2Content" class="step-content">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h6 class="mb-3">Ajouter un produit</h6>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-2">
+                                                <label class="form-label">Produit</label>
+                                                <select class="form-control" id="cartProduct">
+                                                    <option value="">Sélectionner un produit</option>
+                                                    <!-- Les options seront chargées dynamiquement -->
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 mb-2">
+                                                <label class="form-label">Quantité</label>
+                                                <input type="number" class="form-control" id="cartQuantity" value="1" min="1">
+                                            </div>
+                                            <div class="col-md-3 mb-2 d-flex align-items-end">
+                                                <button class="btn btn-primary w-100" id="addToCartBtn">
+                                                    <i class="fas fa-cart-plus me-2"></i>Ajouter
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="mb-3">Panier</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm" id="cartTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Produit</th>
+                                                        <th>Prix unitaire</th>
+                                                        <th>Quantité</th>
+                                                        <th>Total</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="cartItems"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="mb-3">Récapitulatif</h6>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Sous-total:</span>
+                                            <span id="cartSubtotal">0.00 DH</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Remise:</span>
+                                            <span>
+                                                <input type="number" class="form-control form-control-sm" id="cartDiscount" value="0" min="0" style="width: 100px; display: inline-block;"> DH
+                                            </span>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <strong>Total:</strong>
+                                            <strong id="cartTotal">0.00 DH</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <button class="btn btn-outline-secondary" id="backToCustomerBtn">
+                                                <i class="fas fa-arrow-left me-2"></i>Retour
+                                            </button>
+                                            <button class="btn btn-primary" id="nextToPaymentBtn">
+                                                Suivant <i class="fas fa-arrow-right ms-2"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Payment -->
+                    <div id="step3Content" class="step-content">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="mb-3">Mode de paiement</h6>
+                                        <div class="mb-3">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" name="paymentMethod" id="paymentCash" value="cash" checked>
+                                                <label class="form-check-label" for="paymentCash">
+                                                    <i class="fas fa-money-bill-wave me-2"></i>Espèces
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="paymentMethod" id="paymentCredit" value="credit">
+                                                <label class="form-check-label" for="paymentCredit">
+                                                    <i class="fas fa-credit-card me-2"></i>Crédit
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div id="cashPaymentFields">
+                                            <div class="mb-3">
+                                                <label class="form-label">Montant donné</label>
+                                                <input type="number" class="form-control" id="paymentGiven" value="0" min="0" step="0.01">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Monnaie à rendre</label>
+                                                <input type="text" class="form-control" id="paymentChange" value="0.00 DH" readonly>
+                                            </div>
+                                        </div>
+
+                                        <div id="creditPaymentFields" style="display: none;">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Cette vente sera enregistrée comme un crédit et apparaîtra dans la gestion des crédits.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="mb-3">Récapitulatif de la vente</h6>
+                                        <div class="mb-2">
+                                            <strong>Client:</strong> <span id="paymentCustomer">Client Passager</span>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong>Total à payer:</strong> <span id="paymentTotal">0.00 DH</span>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between">
+                                            <button class="btn btn-outline-secondary" id="backToCartBtn">
+                                                <i class="fas fa-arrow-left me-2"></i>Retour
+                                            </button>
+                                            <button class="btn btn-success" id="completeSaleBtn">
+                                                <i class="fas fa-check me-2"></i>Finaliser la vente
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sales List View -->
+                    <div id="salesListView" style="display: none;">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Recherche</label>
+                                        <input type="text" class="form-control" id="salesSearch" placeholder="Client, produit, facture...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Filtre date</label>
+                                        <select class="form-control" id="salesDateFilter">
+                                            <option value="today">Aujourd'hui</option>
+                                            <option value="1day">1 jour</option>
+                                            <option value="3days">3 jours</option>
+                                            <option value="1week">1 semaine</option>
+                                            <option value="15days">15 jours</option>
+                                            <option value="1month">1 mois</option>
+                                            <option value="3months">3 mois</option>
+                                            <option value="6months">6 mois</option>
+                                            <option value="1year">1 an</option>
+                                            <option value="all">Toutes les dates</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button class="btn btn-outline-primary w-100" id="applySalesFilter">
+                                            <i class="fas fa-filter me-2"></i>Appliquer filtre
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table" id="salesTable">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-sort="invoice">N° Facture <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="id">ID Vente <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="customerId">Client ID <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="customerName">Client Name <i class="fas fa-sort ms-1"></i></th>
+                                                <th>Produit</th>
+                                                <th class="sortable" data-sort="quantity">Quantité <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="price">Prix vente <i class="fas fa-sort ms-1"></i></th>
+                                                <th>Prix revient</th>
+                                                <th>Profit unitaire</th>
+                                                <th class="sortable" data-sort="total">Total produit <i class="fas fa-sort ms-1"></i></th>
+                                                <th>Profit total</th>
+                                                <th class="sortable" data-sort="saleProfit">Profit vente <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="discount">Remise <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="paid">Payé <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="remaining">Reste <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="sortable" data-sort="payment">Paiement <i class="fas fa-sort ms-1"></i></th>
+                                                <th class="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="salesTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Sales History -->
+    <div class="modal fade" id="salesModal" tabindex="-1">
+        <div class="modal-dialog modal-4xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Historique des Ventes</span>
+                                <small>Consultez et gérez vos ventes</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <button class="btn btn-outline-primary" id="importSalesHistoryBtn">
+                            <i class="fas fa-file-import me-2"></i>Importer
+                        </button>
+                        <button class="btn btn-outline-primary" id="exportSalesHistoryBtn">
+                            <i class="fas fa-file-export me-2"></i>Exporter
+                        </button>
+                        <button class="btn btn-outline-primary" id="refreshSalesListBtn">
+                            <i class="fas fa-sync-alt me-2"></i>Rafraîchir
+                        </button>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Nombre de ventes</h6>
+                                    <h3 class="mb-0" id="salesCount">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Chiffre d'affaires</h6>
+                                    <h3 class="mb-0" id="salesRevenue">0 DH</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Profit total</h6>
+                                    <h3 class="mb-0 text-success" id="salesProfit">0 DH</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <label class="form-label">Recherche</label>
+                                    <input type="text" class="form-control" id="salesHistorySearch" 
+                                           placeholder="Client, produit ou n° facture...">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Période</label>
+                                    <select class="form-control" id="salesHistoryDateFilter">
+                                        <option value="today">Aujourd'hui</option>
+                                        <option value="yesterday">Hier</option>
+                                        <option value="1day">1 jour</option>
+                                        <option value="3days">3 jours</option>
+                                        <option value="1week">1 semaine</option>
+                                        <option value="15days">15 jours</option>
+                                        <option value="1month">1 mois</option>
+                                        <option value="3months">3 mois</option>
+                                        <option value="6months">6 mois</option>
+                                        <option value="1year">1 an</option>
+                                        <option value="all">Toutes les dates</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100" id="applySalesHistoryFilter">
+                                        <i class="fas fa-filter me-2"></i>Filtrer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sales Table avec colonne Remise -->
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="salesHistoryTable">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-sort="invoice">N° Facture <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="id">ID Vente <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="customerId">Client ID <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="customerName">Client Name <i class="fas fa-sort ms-1"></i></th>
+                                        <th>Produit</th>
+                                        <th class="sortable" data-sort="quantity">Quantité <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="price">Prix vente <i class="fas fa-sort ms-1"></i></th>
+                                        <th>Prix revient</th>
+                                        <th>Profit unitaire</th>
+                                        <th class="sortable" data-sort="total">Total produit <i class="fas fa-sort ms-1"></i></th>
+                                        <th>Profit total</th>
+                                        <th class="sortable" data-sort="saleProfit">Profit vente <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="discount">Remise <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="paid">Payé <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="remaining">Reste <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="payment">Paiement <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="salesHistoryTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Total: <span id="totalSalesHistory">0</span> ventes
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Credits avec colonne Remise -->
+    <!-- Modal Credits avec colonne Remise et Date d'échéance -->
+    <div class="modal fade" id="creditsModal" tabindex="-1">
+        <div class="modal-dialog modal-4xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Gestion des Crédits</span>
+                                <small>Suivez et gérez les crédits clients</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <button class="btn btn-primary" id="addCreditBtn">
+                            <i class="fas fa-plus-circle me-2"></i>Nouveau Crédit
+                        </button>
+                        <button class="btn btn-outline-primary" id="importCreditsBtn">
+                            <i class="fas fa-file-import me-2"></i>Importer
+                        </button>
+                        <button class="btn btn-outline-primary" id="exportCreditsBtn">
+                            <i class="fas fa-file-export me-2"></i>Exporter
+                        </button>
+                        <button class="btn btn-outline-primary" id="refreshCreditsBtn">
+                            <i class="fas fa-sync-alt me-2"></i>Rafraîchir
+                        </button>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Total Crédits</h6>
+                                    <h3 class="mb-0" id="totalCredits">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Montant Total</h6>
+                                    <h3 class="mb-0" id="totalCreditsAmount">0 DH</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Crédits Impayés</h6>
+                                    <h3 class="mb-0 text-warning" id="unpaidCredits">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Recherche</label>
+                                    <input type="text" class="form-control" id="creditSearch" 
+                                           placeholder="Client, n° facture...">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Statut</label>
+                                    <select class="form-control" id="creditStatusFilter">
+                                        <option value="all">Tous les statuts</option>
+                                        <option value="active">Actifs</option>
+                                        <option value="paid">Payés</option>
+                                        <option value="overdue">En retard</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100" id="applyCreditFilter">
+                                        <i class="fas fa-filter me-2"></i>Filtrer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Credits Table avec colonne Remise et Date d'échéance -->
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="creditsTable">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-sort="invoice">N° Facture <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="id">ID Crédit <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="customerId">Client ID <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="customerName">Client Name <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="product">Produit <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="quantity">Quantité <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="priceSell">Prix vente <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="priceCost">Prix revient <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="profitUnit">Profit unitaire <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="totalProduct">Total produit <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="profitTotal">Profit total <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="profitSale">Profit vente <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="discount">Remise <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="paid">Payé <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="remaining">Reste <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="dueDate">Date échéance <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="payment">Paiement <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="creditsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Total: <span id="totalCreditsCount">0</span> crédits
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal for Credits -->
+    <div class="modal fade" id="paymentModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Effectuer un paiement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="paymentForm">
+                        <div class="mb-3">
+                            <label class="form-label">Client</label>
+                            <input type="text" class="form-control" id="paymentCustomerName" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Montant total</label>
+                            <input type="text" class="form-control" id="paymentTotalAmount" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Reste à payer</label>
+                            <input type="text" class="form-control" id="paymentRemainingAmount" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Montant payé <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="paymentAmount" value="0" min="0" step="0.01" required>
+                        </div>
+                        <input type="hidden" id="paymentCreditId">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-success" id="confirmPaymentBtn">Confirmer le paiement</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Credit Modal -->
+    <!-- Add Credit Modal CORRIGÉ pour correspondre aux 19 colonnes du tableau -->
+    <div class="modal fade" id="addCreditModal" tabindex="-1">
+        <div class="modal-dialog modal-4xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Ajouter un Crédit Manuel</span>
+                                <small>Créez un crédit correspondant aux 19 colonnes du tableau</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addCreditForm">
+                        <!-- Ligne 1 : N° Facture, ID Crédit (auto), Date -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">N° Facture <span class="text-muted">(optionnel)</span></label>
+                                <input type="text" class="form-control" id="creditInvoice" 
+                                       placeholder="INV-XXXXX" value="">
+                                <small class="text-muted">Laissez vide pour génération auto</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">ID Crédit <span class="text-muted">(auto)</span></label>
+                                <input type="text" class="form-control" value="Généré automatiquement" disabled readonly 
+                                       style="background-color: var(--gray-100);">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="creditDate" 
+                                       value="" required>
+                            </div>
+                        </div>
+
+                        <!-- Ligne 2 : Client ID (optionnel), Client Name (obligatoire) -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Client ID <span class="text-muted">(optionnel)</span></label>
+                                <input type="number" class="form-control" id="creditCustomerId" 
+                                       placeholder="ID du client" min="1">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Client Name <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <select class="form-control" id="creditCustomer" required>
+                                        <option value="">Sélectionner un client</option>
+                                        <!-- Les options seront chargées dynamiquement -->
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" id="addQuickCustomerCreditBtn" title="Ajouter un nouveau client">
+                                        <i class="fas fa-user-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ligne 3 : Produit (optionnel) -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Produit <span class="text-muted">(optionnel)</span></label>
+                                <select class="form-control" id="creditProduct">
+                                    <option value="">Sélectionner un produit (optionnel)</option>
+                                    <!-- Les options seront chargées dynamiquement -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Ligne 4 : Quantité, Prix vente, Prix revient, Profit unitaire -->
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Quantité</label>
+                                <input type="number" class="form-control" id="creditQuantity" value="1" min="1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Prix vente (DH)</label>
+                                <input type="number" class="form-control" id="creditPriceSell" value="0" min="0" step="0.01">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Prix revient (DH)</label>
+                                <input type="number" class="form-control" id="creditPriceCost" value="0" min="0" step="0.01">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Profit unitaire (DH)</label>
+                                <input type="number" class="form-control" id="creditProfitUnit" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+                            </div>
+                        </div>
+
+                        <!-- Ligne 5 : Total produit, Profit total, Profit vente -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Total produit (DH)</label>
+                                <input type="number" class="form-control" id="creditTotalProduct" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Profit total (DH)</label>
+                                <input type="number" class="form-control" id="creditProfitTotal" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Profit vente (DH)</label>
+                                <input type="number" class="form-control" id="creditProfitSale" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+                            </div>
+                        </div>
+
+                        <!-- Ligne 6 : Montant total, Remise, Payé -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Montant total du crédit <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="creditAmount" value="0" min="0" step="0.01" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Remise (DH)</label>
+                                <input type="number" class="form-control" id="creditDiscount" value="0" min="0" step="0.01">
+                                <small class="text-muted">Sera déduite du total</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Payé (DH) <span class="text-muted">(optionnel)</span></label>
+                                <input type="number" class="form-control" id="creditPaid" value="0" min="0" step="0.01">
+                            </div>
+                        </div>
+
+                        <!-- Ligne 7 : Reste, Date échéance, Mode de paiement -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Reste à payer (DH)</label>
+                                <input type="number" class="form-control" id="creditRemaining" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Date d'échéance</label>
+                                <input type="date" class="form-control" id="creditDueDate" value="">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Mode de paiement</label>
+                                <select class="form-control" id="creditPaymentMethod">
+                                    <option value="credit">Crédit</option>
+                                    <option value="partial">Paiement partiel</option>
+                                    <option value="cash">Espèces</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Ligne 8 : Description / Notes -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Description / Notes</label>
+                                <textarea class="form-control" id="creditDescription" rows="2" placeholder="Informations complémentaires (optionnel)"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Informations cachées pour les calculs -->
+                        <input type="hidden" id="creditSubtotal" value="0">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <div class="text-muted small me-auto">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Les champs marqués <span class="text-danger">*</span> sont obligatoires
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="saveCreditBtn">
+                        <i class="fas fa-save me-2"></i>Enregistrer le crédit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Add Customer Modal for Credits -->
+    <div class="modal fade" id="quickAddCustomerCreditModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ajouter un client rapidement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="quickCustomerCreditForm">
+                        <div class="mb-3">
+                            <label class="form-label">Nom complet <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="quickCustomerCreditName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Téléphone</label>
+                            <input type="tel" class="form-control" id="quickCustomerCreditPhone">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">WhatsApp</label>
+                            <input type="tel" class="form-control" id="quickCustomerCreditWhatsapp">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="saveQuickCustomerCreditBtn">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Charges -->
+    <div class="modal fade" id="chargesModal" tabindex="-1">
+        <div class="modal-dialog modal-4xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Gestion des Charges</span>
+                                <small>Gérez vos dépenses et charges</small>
+                            </div>
+                        </div>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <button class="btn btn-primary" id="addChargeBtn">
+                            <i class="fas fa-plus-circle me-2"></i>Nouvelle Charge
+                        </button>
+                        <button class="btn btn-outline-primary" id="importChargesBtn">
+                            <i class="fas fa-file-import me-2"></i>Importer
+                        </button>
+                        <button class="btn btn-outline-primary" id="exportChargesBtn">
+                            <i class="fas fa-file-export me-2"></i>Exporter
+                        </button>
+                        <button class="btn btn-outline-primary" id="listChargesBtn">
+                            <i class="fas fa-list me-2"></i>Liste des charges
+                        </button>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Total Charges</h6>
+                                    <h3 class="mb-0" id="totalCharges">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Montant Total</h6>
+                                    <h3 class="mb-0" id="totalChargesAmount">0 DH</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card stat-card-sm">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-1">Charges du mois</h6>
+                                    <h3 class="mb-0 text-warning" id="monthlyCharges">0 DH</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Form -->
+                    <div class="card add-form mb-4" id="chargeFormCard" style="display: none;">
+                        <div class="card-body">
+                            <h6>
+                                <i class="fas fa-plus-circle me-2"></i>
+                                Ajouter une charge
+                            </h6>
+                            <form id="chargeForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Libellé <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="chargeLabel" 
+                                               placeholder="Ex: Loyer, Électricité, etc." required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Catégorie <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-control" id="chargeCategory" required>
+                                            <option value="">Sélectionner une catégorie</option>
+                                            <option value="LOYER">Loyer</option>
+                                            <option value="ÉLECTRICITÉ">Électricité</option>
+                                            <option value="EAU">Eau</option>
+                                            <option value="TÉLÉPHONE/INTERNET">Téléphone/Internet</option>
+                                            <option value="SALAIRES">Salaires</option>
+                                            <option value="TRANSPORT">Transport</option>
+                                            <option value="FOURNITURES">Fournitures</option>
+                                            <option value="ENTRETIEN">Entretien</option>
+                                            <option value="ASSURANCE">Assurance</option>
+                                            <option value="IMPÔTS">Impôts</option>
+                                            <option value="PUBLICITÉ">Publicité</option>
+                                            <option value="AUTRE">Autre</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Montant (DH) <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="number" class="form-control" id="chargeAmount" 
+                                               placeholder="0.00" value="0" min="0" step="0.01" required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Date <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control" id="chargeDate" 
+                                               value="" required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">
+                                            Mode de paiement
+                                        </label>
+                                        <select class="form-control" id="chargePaymentMethod">
+                                            <option value="ESPÈCES">Espèces</option>
+                                            <option value="CARTE BANCAIRE">Carte bancaire</option>
+                                            <option value="CHÈQUE">Chèque</option>
+                                            <option value="VIREMENT">Virement</option>
+                                            <option value="AUTRE">Autre</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            Fournisseur/Bénéficiaire
+                                        </label>
+                                        <input type="text" class="form-control" id="chargeSupplier" 
+                                               placeholder="Nom du fournisseur ou bénéficiaire (optionnel)">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            N° Facture / Référence
+                                        </label>
+                                        <input type="text" class="form-control" id="chargeReference" 
+                                               placeholder="N° de facture ou référence (optionnel)">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        Description / Notes
+                                    </label>
+                                    <textarea class="form-control" id="chargeDescription" 
+                                              rows="2" placeholder="Informations complémentaires (optionnel)"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Enregistrer
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="cancelChargeBtn">
+                                        <i class="fas fa-times me-2"></i>Annuler
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Recherche</label>
+                                    <input type="text" class="form-control" id="chargeSearch" 
+                                           placeholder="Libellé, catégorie, fournisseur...">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Période</label>
+                                    <select class="form-control" id="chargeDateFilter">
+                                        <option value="today">Aujourd'hui</option>
+                                        <option value="yesterday">Hier</option>
+                                        <option value="1day">1 jour</option>
+                                        <option value="3days">3 jours</option>
+                                        <option value="1week">1 semaine</option>
+                                        <option value="15days">15 jours</option>
+                                        <option value="1month">1 mois</option>
+                                        <option value="3months">3 mois</option>
+                                        <option value="6months">6 mois</option>
+                                        <option value="1year">1 an</option>
+                                        <option value="all">Toutes les dates</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100" id="applyChargeFilter">
+                                        <i class="fas fa-filter me-2"></i>Filtrer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charges Table -->
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table" id="chargesTable">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-sort="id">ID <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="label">Libellé <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="category">Catégorie <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="amount">Montant <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+                                        <th class="sortable" data-sort="paymentMethod">Paiement <i class="fas fa-sort ms-1"></i></th>
+                                        <th>Fournisseur</th>
+                                        <th>Référence</th>
+                                        <th>Description</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="chargesTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Total: <span id="totalChargesCount">0</span> charges
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+<!-- Modal Statistics -->
+<div class="modal fade" id="statisticsModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-4xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <div class="d-flex align-items-center">
+                        <div class="modal-icon me-3">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div>
+                            <span class="d-block">Statistiques et Analyses</span>
+                            <small>Tableaux de bord interactifs</small>
+                        </div>
+                    </div>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Toolbar avec filtre de période -->
+                <div class="toolbar mb-4">
+                    <div class="row g-3 align-items-end w-100">
+                        <div class="col-md-4">
+                            <label class="form-label">Période d'analyse</label>
+                            <select class="form-control" id="statisticsPeriod">
+                                <option value="today">Aujourd'hui</option>
+                                <option value="1day">1 jour</option>
+                                <option value="3days">3 jours</option>
+                                <option value="1week">1 semaine</option>
+                                <option value="15days">15 jours</option>
+                                <option value="1month">1 mois</option>
+                                <option value="3months">3 mois</option>
+                                <option value="6months">6 mois</option>
+                                <option value="1year">1 an</option>
+                                <option value="all">Toutes les dates</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" id="applyStatisticsFilter">
+                                <i class="fas fa-sync-alt me-2"></i>Actualiser
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-primary w-100" id="exportStatisticsBtn">
+                                <i class="fas fa-file-export me-2"></i>Exporter PDF
+                            </button>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge bg-light text-dark p-3" id="statisticsDateRange">
+                                <i class="far fa-calendar-alt me-2"></i>Chargement...
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Cards Principaux -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="text-muted mb-1">Chiffre d'affaires</h6>
+                                        <h2 class="mb-0" id="statTotalRevenue">0 DH</h2>
+                                    </div>
+                                    <div class="stat-icon" style="background: #e8f5e9; color: #2e7d32;">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-2 small text-success" id="statRevenueTrend">
+                                    <i class="fas fa-arrow-up me-1"></i>+0% vs période précédente
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="text-muted mb-1">Profit total</h6>
+                                        <h2 class="mb-0" id="statTotalProfit">0 DH</h2>
+                                    </div>
+                                    <div class="stat-icon" style="background: #e3f2fd; color: #1565c0;">
+                                        <i class="fas fa-coins"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-2 small" id="statProfitTrend">
+                                    <i class="fas fa-minus me-1"></i>0% marge
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="text-muted mb-1">Articles vendus</h6>
+                                        <h2 class="mb-0" id="statTotalItems">0</h2>
+                                    </div>
+                                    <div class="stat-icon" style="background: #fff3e0; color: #e65100;">
+                                        <i class="fas fa-box-open"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-2 small text-info" id="statItemsAvg">
+                                    <i class="fas fa-calculator me-1"></i>Moy: 0/jour
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="text-muted mb-1">Crédits en cours</h6>
+                                        <h2 class="mb-0" id="statActiveCredits">0 DH</h2>
+                                    </div>
+                                    <div class="stat-icon" style="background: #fce4e4; color: #c62828;">
+                                        <i class="fas fa-hand-holding-usd"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-2 small text-warning" id="statCreditCount">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>0 crédits actifs
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphiques Row 1 -->
+               <!-- Graphiques Row 1 - Chronologie à 90% et Circulaire à 10% -->
+<div class="row g-4 mb-4">
+    <div class="col-md-10"> <!-- 90% de largeur à gauche -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Évolution des ventes et crédits</h5>
+                <div class="btn-group btn-group-sm" id="chartScaleToggle">
+                    <button class="btn btn-outline-secondary active" data-scale="day">Jour</button>
+                    <button class="btn btn-outline-secondary" data-scale="week">Semaine</button>
+                    <button class="btn btn-outline-secondary" data-scale="month">Mois</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="salesCreditChart" style="height: 350px; width: 100%;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2"> <!-- 10% de largeur à droite -->
+        <div class="card h-100">
+            <div class="card-header text-center">
+                <h5 class="mb-0">Ventes</h5>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center p-2">
+                <canvas id="paymentMethodChart" style="height: 200px; width: 100%; max-width: 200px;"></canvas>
+            </div>
+            <div class="card-footer bg-transparent border-0 text-center small">
+                <div class="d-flex justify-content-center gap-3">
+                    <span class="d-inline-flex align-items-center">
+                        <span class="badge me-1" style="background: #000000; width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
+                        Espèces
+                    </span>
+                    <span class="d-inline-flex align-items-center">
+                        <span class="badge me-1" style="background: #2ecc71; width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
+                        Crédit
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                <!-- Graphiques Row 2 -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Top 5 clients</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm" id="topCustomersTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Client</th>
+                                                <th class="text-end">CA</th>
+                                                <th class="text-end">Profit</th>
+                                                <th class="text-center">Achats</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="topCustomersBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Top 5 produits</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm" id="topProductsTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Produit</th>
+                                                <th class="text-end">Quantité</th>
+                                                <th class="text-end">CA</th>
+                                                <th class="text-end">Profit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="topProductsBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistiques détaillées -->
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Résumé des ventes</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Nombre de ventes:</span>
+                                    <span class="fw-bold" id="statSalesCount">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Ticket moyen:</span>
+                                    <span class="fw-bold" id="statAvgTicket">0 DH</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Ventes comptant:</span>
+                                    <span class="fw-bold" id="statCashSales">0 DH</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Ventes à crédit:</span>
+                                    <span class="fw-bold" id="statCreditSales">0 DH</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Remises accordées:</span>
+                                    <span class="fw-bold text-danger" id="statTotalDiscount">0 DH</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Marge brute:</span>
+                                    <span class="fw-bold text-success" id="statMargin">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Crédits</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Crédits impayés:</span>
+                                    <span class="fw-bold" id="statUnpaidCredits">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Montant total dû:</span>
+                                    <span class="fw-bold" id="statTotalDue">0 DH</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Crédits en retard:</span>
+                                    <span class="fw-bold text-danger" id="statOverdueCredits">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Montant en retard:</span>
+                                    <span class="fw-bold text-danger" id="statOverdueAmount">0 DH</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Taux de recouvrement:</span>
+                                    <span class="fw-bold text-success" id="statRecoveryRate">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Clients</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Clients actifs:</span>
+                                    <span class="fw-bold" id="statActiveCustomers">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Nouveaux clients:</span>
+                                    <span class="fw-bold" id="statNewCustomers">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">CA moyen/client:</span>
+                                    <span class="fw-bold" id="statAvgCustomerRevenue">0 DH</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Profit moyen/client:</span>
+                                    <span class="fw-bold" id="statAvgCustomerProfit">0 DH</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Taux de fidélité:</span>
+                                    <span class="fw-bold" id="statLoyaltyRate">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="text-muted small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Dernière mise à jour: <span id="statLastUpdate">-</span>
+                </div>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="db.js"></script>
+    <script src="main.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(registration => console.log('ServiceWorker enregistré'))
+                    .catch(err => console.log('Erreur ServiceWorker:', err));
+            });
+        }
+    </script>
+    <!-- Bibliothèque pour générer des PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</body>
+</html>
