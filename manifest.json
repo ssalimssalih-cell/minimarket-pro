@@ -1,0 +1,25 @@
+{
+  "name": "MiniMarket Pro",
+  "short_name": "MiniMarket",
+  "description": "Application de gestion de minimarket",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2ecc71",
+  "orientation": "any",
+  "scope": "/",
+  "categories": ["business", "productivity"],
+  "lang": "fr",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "splash_pages": null,
+  "display_override": ["standalone", "fullscreen", "minimal-ui"]
+}
