@@ -666,8 +666,7 @@
         </div>
     </div>
 
-    <!-- Modal Products AMÉLIORÉ avec recherche et tris -->
-    <!-- Modal Products AMÉLIORÉ avec recherche, tris ET DATE CRÉATION -->
+    <!-- Modal Products -->
     <div class="modal fade" id="productsModal" tabindex="-1">
         <div class="modal-dialog modal-4xl modal-dialog-centered">
             <div class="modal-content">
@@ -724,9 +723,7 @@
                                         </label>
                                         <select class="form-control" id="productCategory" required>
                                             <option value="">Sélectionner une catégorie</option>
-                                            <!-- Les options seront chargées dynamiquement -->
                                         </select>
-                                        <small class="text-muted">Vous pouvez taper pour rechercher</small>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -793,7 +790,6 @@
                                         </label>
                                         <select class="form-control" id="productSupplier">
                                             <option value="">Sélectionner un fournisseur</option>
-                                            <!-- Les options seront chargées dynamiquement -->
                                         </select>
                                     </div>
                                 </div>
@@ -856,7 +852,7 @@
                         </div>
                     </div>
 
-                    <!-- Products Table avec tris et DATE CRÉATION -->
+                    <!-- Products Table -->
                     <div class="card">
                         <div class="table-responsive">
                             <table class="table" id="productsTable">
@@ -959,7 +955,6 @@
                                     <div class="input-group">
                                         <select class="form-control" id="saleCustomer" required>
                                             <option value="">Client Passager (par défaut)</option>
-                                            <!-- Les options seront chargées dynamiquement -->
                                         </select>
                                         <button class="btn btn-outline-primary" type="button" id="addQuickCustomerBtn" title="Ajouter un nouveau client">
                                             <i class="fas fa-user-plus"></i>
@@ -1020,7 +1015,6 @@
                                                 <label class="form-label">Produit</label>
                                                 <select class="form-control" id="cartProduct">
                                                     <option value="">Sélectionner un produit</option>
-                                                    <!-- Les options seront chargées dynamiquement -->
                                                 </select>
                                             </div>
                                             <div class="col-md-3 mb-2">
@@ -1220,7 +1214,7 @@
         </div>
     </div>
 
-    <!-- Modal Sales History -->
+    <!-- Modal Sales History avec BOUTON EXPORT EXCEL -->
     <div class="modal fade" id="salesModal" tabindex="-1">
         <div class="modal-dialog modal-4xl modal-dialog-centered">
             <div class="modal-content">
@@ -1236,7 +1230,13 @@
                             </div>
                         </div>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="d-flex gap-2">
+                        <!-- BOUTON EXPORT EXCEL POUR LES VENTES -->
+                        <button class="btn btn-sm btn-success" onclick="window.salesManager.exportSalesWithExcel()" title="Exporter les ventes vers Excel">
+                            <i class="fas fa-file-excel me-1"></i> Exporter
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
                 </div>
                 <div class="modal-body">
                     <!-- Toolbar -->
@@ -1245,7 +1245,7 @@
                             <i class="fas fa-file-import me-2"></i>Importer
                         </button>
                         <button class="btn btn-outline-primary" id="exportSalesHistoryBtn">
-                            <i class="fas fa-file-export me-2"></i>Exporter
+                            <i class="fas fa-file-export me-2"></i>Exporter (JSON)
                         </button>
                         <button class="btn btn-outline-primary" id="refreshSalesListBtn">
                             <i class="fas fa-sync-alt me-2"></i>Rafraîchir
@@ -1314,7 +1314,7 @@
                         </div>
                     </div>
 
-                    <!-- Sales Table avec colonne Remise -->
+                    <!-- Sales Table -->
                     <div class="card">
                         <div class="table-responsive">
                             <table class="table" id="salesHistoryTable">
@@ -1355,8 +1355,7 @@
         </div>
     </div>
 
-    <!-- Modal Credits avec colonne Remise -->
-    <!-- Modal Credits avec colonne Remise et Date d'échéance -->
+    <!-- Modal Credits avec BOUTON EXPORT EXCEL -->
     <div class="modal fade" id="creditsModal" tabindex="-1">
         <div class="modal-dialog modal-4xl modal-dialog-centered">
             <div class="modal-content">
@@ -1372,7 +1371,13 @@
                             </div>
                         </div>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="d-flex gap-2">
+                        <!-- BOUTON EXPORT EXCEL POUR LES CRÉDITS -->
+                        <button class="btn btn-sm btn-success" onclick="window.creditManager.exportCreditsWithExcel()" title="Exporter les crédits vers Excel">
+                            <i class="fas fa-file-excel me-1"></i> Exporter
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
                 </div>
                 <div class="modal-body">
                     <!-- Toolbar -->
@@ -1384,7 +1389,7 @@
                             <i class="fas fa-file-import me-2"></i>Importer
                         </button>
                         <button class="btn btn-outline-primary" id="exportCreditsBtn">
-                            <i class="fas fa-file-export me-2"></i>Exporter
+                            <i class="fas fa-file-export me-2"></i>Exporter (JSON)
                         </button>
                         <button class="btn btn-outline-primary" id="refreshCreditsBtn">
                             <i class="fas fa-sync-alt me-2"></i>Rafraîchir
@@ -1446,7 +1451,7 @@
                         </div>
                     </div>
 
-                    <!-- Credits Table avec colonne Remise et Date d'échéance -->
+                    <!-- Credits Table -->
                     <div class="card">
                         <div class="table-responsive">
                             <table class="table" id="creditsTable">
@@ -1526,7 +1531,6 @@
     </div>
 
     <!-- Add Credit Modal -->
-    <!-- Add Credit Modal CORRIGÉ pour correspondre aux 19 colonnes du tableau -->
     <div class="modal fade" id="addCreditModal" tabindex="-1">
         <div class="modal-dialog modal-4xl modal-dialog-centered">
             <div class="modal-content">
@@ -1546,7 +1550,7 @@
                 </div>
                 <div class="modal-body">
                     <form id="addCreditForm">
-                        <!-- Ligne 1 : N° Facture, ID Crédit (auto), Date -->
+                        <!-- Ligne 1 -->
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">N° Facture <span class="text-muted">(optionnel)</span></label>
@@ -1566,7 +1570,7 @@
                             </div>
                         </div>
 
-                        <!-- Ligne 2 : Client ID (optionnel), Client Name (obligatoire) -->
+                        <!-- Ligne 2 -->
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Client ID <span class="text-muted">(optionnel)</span></label>
@@ -1578,7 +1582,6 @@
                                 <div class="input-group">
                                     <select class="form-control" id="creditCustomer" required>
                                         <option value="">Sélectionner un client</option>
-                                        <!-- Les options seront chargées dynamiquement -->
                                     </select>
                                     <button class="btn btn-outline-primary" type="button" id="addQuickCustomerCreditBtn" title="Ajouter un nouveau client">
                                         <i class="fas fa-user-plus"></i>
@@ -1587,18 +1590,17 @@
                             </div>
                         </div>
 
-                        <!-- Ligne 3 : Produit (optionnel) -->
+                        <!-- Ligne 3 -->
                         <div class="row mb-3">
                             <div class="col-md-12">
                                 <label class="form-label">Produit <span class="text-muted">(optionnel)</span></label>
                                 <select class="form-control" id="creditProduct">
                                     <option value="">Sélectionner un produit (optionnel)</option>
-                                    <!-- Les options seront chargées dynamiquement -->
                                 </select>
                             </div>
                         </div>
 
-                        <!-- Ligne 4 : Quantité, Prix vente, Prix revient, Profit unitaire -->
+                        <!-- Ligne 4 -->
                         <div class="row mb-3">
                             <div class="col-md-3">
                                 <label class="form-label">Quantité</label>
@@ -1618,7 +1620,7 @@
                             </div>
                         </div>
 
-                        <!-- Ligne 5 : Total produit, Profit total, Profit vente -->
+                        <!-- Ligne 5 -->
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">Total produit (DH)</label>
@@ -1634,7 +1636,7 @@
                             </div>
                         </div>
 
-                        <!-- Ligne 6 : Montant total, Remise, Payé -->
+                        <!-- Ligne 6 -->
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">Montant total du crédit <span class="text-danger">*</span></label>
@@ -1651,7 +1653,7 @@
                             </div>
                         </div>
 
-                        <!-- Ligne 7 : Reste, Date échéance, Mode de paiement -->
+                        <!-- Ligne 7 -->
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">Reste à payer (DH)</label>
@@ -1671,7 +1673,7 @@
                             </div>
                         </div>
 
-                        <!-- Ligne 8 : Description / Notes -->
+                        <!-- Ligne 8 -->
                         <div class="row mb-3">
                             <div class="col-md-12">
                                 <label class="form-label">Description / Notes</label>
@@ -1679,7 +1681,6 @@
                             </div>
                         </div>
 
-                        <!-- Informations cachées pour les calculs -->
                         <input type="hidden" id="creditSubtotal" value="0">
                     </form>
                 </div>
@@ -1963,393 +1964,391 @@
     <div id="loadingSpinner" class="loading-spinner" style="display: none;">
         <div class="spinner"></div>
     </div>
-<!-- Modal Statistics -->
-<div class="modal fade" id="statisticsModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-4xl modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <div class="d-flex align-items-center">
-                        <div class="modal-icon me-3">
-                            <i class="fas fa-chart-pie"></i>
+
+    <!-- Modal Statistics -->
+    <div class="modal fade" id="statisticsModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-4xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <div class="d-flex align-items-center">
+                            <div class="modal-icon me-3">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                            <div>
+                                <span class="d-block">Statistiques et Analyses</span>
+                                <small>Tableaux de bord interactifs</small>
+                            </div>
                         </div>
-                        <div>
-                            <span class="d-block">Statistiques et Analyses</span>
-                            <small>Tableaux de bord interactifs</small>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Toolbar -->
+                    <div class="toolbar mb-4">
+                        <div class="row g-3 align-items-end w-100">
+                            <div class="col-md-4">
+                                <label class="form-label">Période d'analyse</label>
+                                <select class="form-control" id="statisticsPeriod">
+                                    <option value="today">Aujourd'hui</option>
+                                    <option value="1day">1 jour</option>
+                                    <option value="3days">3 jours</option>
+                                    <option value="1week">1 semaine</option>
+                                    <option value="15days">15 jours</option>
+                                    <option value="1month">1 mois</option>
+                                    <option value="3months">3 mois</option>
+                                    <option value="6months">6 mois</option>
+                                    <option value="1year">1 an</option>
+                                    <option value="all">Toutes les dates</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100" id="applyStatisticsFilter">
+                                    <i class="fas fa-sync-alt me-2"></i>Actualiser
+                                </button>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-primary w-100" id="exportStatisticsBtn">
+                                    <i class="fas fa-file-export me-2"></i>Exporter PDF
+                                </button>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <span class="badge bg-light text-dark p-3" id="statisticsDateRange">
+                                    <i class="far fa-calendar-alt me-2"></i>Chargement...
+                                </span>
+                            </div>
                         </div>
                     </div>
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Toolbar avec filtre de période -->
-                <div class="toolbar mb-4">
-                    <div class="row g-3 align-items-end w-100">
+
+                    <!-- KPI Cards Principaux -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <div class="card stat-card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="text-muted mb-1">Chiffre d'affaires</h6>
+                                            <h2 class="mb-0" id="statTotalRevenue">0 DH</h2>
+                                        </div>
+                                        <div class="stat-icon" style="background: #e8f5e9; color: #2e7d32;">
+                                            <i class="fas fa-chart-line"></i>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 small text-success" id="statRevenueTrend">
+                                        <i class="fas fa-arrow-up me-1"></i>+0% vs période précédente
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="text-muted mb-1">Profit total</h6>
+                                            <h2 class="mb-0" id="statTotalProfit">0 DH</h2>
+                                        </div>
+                                        <div class="stat-icon" style="background: #e3f2fd; color: #1565c0;">
+                                            <i class="fas fa-coins"></i>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 small" id="statProfitTrend">
+                                        <i class="fas fa-minus me-1"></i>0% marge
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="text-muted mb-1">Articles vendus</h6>
+                                            <h2 class="mb-0" id="statTotalItems">0</h2>
+                                        </div>
+                                        <div class="stat-icon" style="background: #fff3e0; color: #e65100;">
+                                            <i class="fas fa-box-open"></i>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 small text-info" id="statItemsAvg">
+                                        <i class="fas fa-calculator me-1"></i>Moy: 0/jour
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="text-muted mb-1">Crédits en cours</h6>
+                                            <h2 class="mb-0" id="statActiveCredits">0 DH</h2>
+                                        </div>
+                                        <div class="stat-icon" style="background: #fce4e4; color: #c62828;">
+                                            <i class="fas fa-hand-holding-usd"></i>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 small text-warning" id="statCreditCount">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>0 crédits actifs
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Graphiques Row 1 -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-10">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Évolution des ventes et crédits</h5>
+                                    <div class="btn-group btn-group-sm" id="chartScaleToggle">
+                                        <button class="btn btn-outline-secondary active" data-scale="day">Jour</button>
+                                        <button class="btn btn-outline-secondary" data-scale="week">Semaine</button>
+                                        <button class="btn btn-outline-secondary" data-scale="month">Mois</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="salesCreditChart" style="height: 350px; width: 100%;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card h-100">
+                                <div class="card-header text-center">
+                                    <h5 class="mb-0">Ventes</h5>
+                                </div>
+                                <div class="card-body d-flex align-items-center justify-content-center p-2">
+                                    <canvas id="paymentMethodChart" style="height: 200px; width: 100%; max-width: 200px;"></canvas>
+                                </div>
+                                <div class="card-footer bg-transparent border-0 text-center small">
+                                    <div class="d-flex justify-content-center gap-3">
+                                        <span class="d-inline-flex align-items-center">
+                                            <span class="badge me-1" style="background: #000000; width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
+                                            Espèces
+                                        </span>
+                                        <span class="d-inline-flex align-items-center">
+                                            <span class="badge me-1" style="background: #2ecc71; width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
+                                            Crédit
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Graphiques Row 2 -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Top 5 clients</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm" id="topCustomersTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Client</th>
+                                                    <th class="text-end">CA</th>
+                                                    <th class="text-end">Profit</th>
+                                                    <th class="text-center">Achats</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="topCustomersBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Top 5 produits</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm" id="topProductsTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Produit</th>
+                                                    <th class="text-end">Quantité</th>
+                                                    <th class="text-end">CA</th>
+                                                    <th class="text-end">Profit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="topProductsBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistiques détaillées -->
+                    <div class="row g-4">
                         <div class="col-md-4">
-                            <label class="form-label">Période d'analyse</label>
-                            <select class="form-control" id="statisticsPeriod">
-                                <option value="today">Aujourd'hui</option>
-                                <option value="1day">1 jour</option>
-                                <option value="3days">3 jours</option>
-                                <option value="1week">1 semaine</option>
-                                <option value="15days">15 jours</option>
-                                <option value="1month">1 mois</option>
-                                <option value="3months">3 mois</option>
-                                <option value="6months">6 mois</option>
-                                <option value="1year">1 an</option>
-                                <option value="all">Toutes les dates</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-primary w-100" id="applyStatisticsFilter">
-                                <i class="fas fa-sync-alt me-2"></i>Actualiser
-                            </button>
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-outline-primary w-100" id="exportStatisticsBtn">
-                                <i class="fas fa-file-export me-2"></i>Exporter PDF
-                            </button>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <span class="badge bg-light text-dark p-3" id="statisticsDateRange">
-                                <i class="far fa-calendar-alt me-2"></i>Chargement...
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- KPI Cards Principaux -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="card stat-card h-100">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <h6 class="text-muted mb-1">Chiffre d'affaires</h6>
-                                        <h2 class="mb-0" id="statTotalRevenue">0 DH</h2>
-                                    </div>
-                                    <div class="stat-icon" style="background: #e8f5e9; color: #2e7d32;">
-                                        <i class="fas fa-chart-line"></i>
-                                    </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Résumé des ventes</h5>
                                 </div>
-                                <div class="mt-2 small text-success" id="statRevenueTrend">
-                                    <i class="fas fa-arrow-up me-1"></i>+0% vs période précédente
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Nombre de ventes:</span>
+                                        <span class="fw-bold" id="statSalesCount">0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Ticket moyen:</span>
+                                        <span class="fw-bold" id="statAvgTicket">0 DH</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Ventes comptant:</span>
+                                        <span class="fw-bold" id="statCashSales">0 DH</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Ventes à crédit:</span>
+                                        <span class="fw-bold" id="statCreditSales">0 DH</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Remises accordées:</span>
+                                        <span class="fw-bold text-danger" id="statTotalDiscount">0 DH</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Marge brute:</span>
+                                        <span class="fw-bold text-success" id="statMargin">0%</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stat-card h-100">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <h6 class="text-muted mb-1">Profit total</h6>
-                                        <h2 class="mb-0" id="statTotalProfit">0 DH</h2>
-                                    </div>
-                                    <div class="stat-icon" style="background: #e3f2fd; color: #1565c0;">
-                                        <i class="fas fa-coins"></i>
-                                    </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Crédits</h5>
                                 </div>
-                                <div class="mt-2 small" id="statProfitTrend">
-                                    <i class="fas fa-minus me-1"></i>0% marge
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stat-card h-100">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <h6 class="text-muted mb-1">Articles vendus</h6>
-                                        <h2 class="mb-0" id="statTotalItems">0</h2>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Crédits impayés:</span>
+                                        <span class="fw-bold" id="statUnpaidCredits">0</span>
                                     </div>
-                                    <div class="stat-icon" style="background: #fff3e0; color: #e65100;">
-                                        <i class="fas fa-box-open"></i>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Montant total dû:</span>
+                                        <span class="fw-bold" id="statTotalDue">0 DH</span>
                                     </div>
-                                </div>
-                                <div class="mt-2 small text-info" id="statItemsAvg">
-                                    <i class="fas fa-calculator me-1"></i>Moy: 0/jour
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Crédits en retard:</span>
+                                        <span class="fw-bold text-danger" id="statOverdueCredits">0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Montant en retard:</span>
+                                        <span class="fw-bold text-danger" id="statOverdueAmount">0 DH</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Taux de recouvrement:</span>
+                                        <span class="fw-bold text-success" id="statRecoveryRate">0%</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stat-card h-100">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <h6 class="text-muted mb-1">Crédits en cours</h6>
-                                        <h2 class="mb-0" id="statActiveCredits">0 DH</h2>
-                                    </div>
-                                    <div class="stat-icon" style="background: #fce4e4; color: #c62828;">
-                                        <i class="fas fa-hand-holding-usd"></i>
-                                    </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Clients</h5>
                                 </div>
-                                <div class="mt-2 small text-warning" id="statCreditCount">
-                                    <i class="fas fa-exclamation-triangle me-1"></i>0 crédits actifs
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Clients actifs:</span>
+                                        <span class="fw-bold" id="statActiveCustomers">0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Nouveaux clients:</span>
+                                        <span class="fw-bold" id="statNewCustomers">0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">CA moyen/client:</span>
+                                        <span class="fw-bold" id="statAvgCustomerRevenue">0 DH</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Profit moyen/client:</span>
+                                        <span class="fw-bold" id="statAvgCustomerProfit">0 DH</span>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Taux de fidélité:</span>
+                                        <span class="fw-bold" id="statLoyaltyRate">0%</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Graphiques Row 1 -->
-               <!-- Graphiques Row 1 - Chronologie à 90% et Circulaire à 10% -->
-<div class="row g-4 mb-4">
-    <div class="col-md-10"> <!-- 90% de largeur à gauche -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Évolution des ventes et crédits</h5>
-                <div class="btn-group btn-group-sm" id="chartScaleToggle">
-                    <button class="btn btn-outline-secondary active" data-scale="day">Jour</button>
-                    <button class="btn btn-outline-secondary" data-scale="week">Semaine</button>
-                    <button class="btn btn-outline-secondary" data-scale="month">Mois</button>
-                </div>
-            </div>
-            <div class="card-body">
-                <canvas id="salesCreditChart" style="height: 350px; width: 100%;"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-2"> <!-- 10% de largeur à droite -->
-        <div class="card h-100">
-            <div class="card-header text-center">
-                <h5 class="mb-0">Ventes</h5>
-            </div>
-            <div class="card-body d-flex align-items-center justify-content-center p-2">
-                <canvas id="paymentMethodChart" style="height: 200px; width: 100%; max-width: 200px;"></canvas>
-            </div>
-            <div class="card-footer bg-transparent border-0 text-center small">
-                <div class="d-flex justify-content-center gap-3">
-                    <span class="d-inline-flex align-items-center">
-                        <span class="badge me-1" style="background: #000000; width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
-                        Espèces
-                    </span>
-                    <span class="d-inline-flex align-items-center">
-                        <span class="badge me-1" style="background: #2ecc71; width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
-                        Crédit
-                    </span>
+                <div class="modal-footer">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Dernière mise à jour: <span id="statLastUpdate">-</span>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-                <!-- Graphiques Row 2 -->
-                <div class="row g-4 mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Top 5 clients</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-sm" id="topCustomersTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Client</th>
-                                                <th class="text-end">CA</th>
-                                                <th class="text-end">Profit</th>
-                                                <th class="text-center">Achats</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="topCustomersBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Top 5 produits</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-sm" id="topProductsTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Produit</th>
-                                                <th class="text-end">Quantité</th>
-                                                <th class="text-end">CA</th>
-                                                <th class="text-end">Profit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="topProductsBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Statistiques détaillées -->
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Résumé des ventes</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Nombre de ventes:</span>
-                                    <span class="fw-bold" id="statSalesCount">0</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Ticket moyen:</span>
-                                    <span class="fw-bold" id="statAvgTicket">0 DH</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Ventes comptant:</span>
-                                    <span class="fw-bold" id="statCashSales">0 DH</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Ventes à crédit:</span>
-                                    <span class="fw-bold" id="statCreditSales">0 DH</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Remises accordées:</span>
-                                    <span class="fw-bold text-danger" id="statTotalDiscount">0 DH</span>
-                                </div>
-                                <hr>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Marge brute:</span>
-                                    <span class="fw-bold text-success" id="statMargin">0%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Crédits</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Crédits impayés:</span>
-                                    <span class="fw-bold" id="statUnpaidCredits">0</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Montant total dû:</span>
-                                    <span class="fw-bold" id="statTotalDue">0 DH</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Crédits en retard:</span>
-                                    <span class="fw-bold text-danger" id="statOverdueCredits">0</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Montant en retard:</span>
-                                    <span class="fw-bold text-danger" id="statOverdueAmount">0 DH</span>
-                                </div>
-                                <hr>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Taux de recouvrement:</span>
-                                    <span class="fw-bold text-success" id="statRecoveryRate">0%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Clients</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Clients actifs:</span>
-                                    <span class="fw-bold" id="statActiveCustomers">0</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Nouveaux clients:</span>
-                                    <span class="fw-bold" id="statNewCustomers">0</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">CA moyen/client:</span>
-                                    <span class="fw-bold" id="statAvgCustomerRevenue">0 DH</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Profit moyen/client:</span>
-                                    <span class="fw-bold" id="statAvgCustomerProfit">0 DH</span>
-                                </div>
-                                <hr>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Taux de fidélité:</span>
-                                    <span class="fw-bold" id="statLoyaltyRate">0%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div class="text-muted small">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Dernière mise à jour: <span id="statLastUpdate">-</span>
-                </div>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Chart.js Library -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="db.js"></script>
     <script src="main.js"></script>
     
-<script>
-// Enregistrement du Service Worker amélioré pour iOS
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-            .then(registration => {
-                console.log('✅ Service Worker enregistré:', registration);
-                
-                // Vérifier si le SW est actif
-                if (registration.active) {
-                    console.log('✅ Service Worker actif');
-                }
-                
-                // Gérer les mises à jour
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    console.log('🔄 Nouveau SW trouvé');
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('🔄 Nouvelle version, rechargement...');
-                            window.location.reload();
-                        }
+    <script>
+    // Enregistrement du Service Worker amélioré pour iOS
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(registration => {
+                    console.log('✅ Service Worker enregistré:', registration);
+                    
+                    if (registration.active) {
+                        console.log('✅ Service Worker actif');
+                    }
+                    
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('🔄 Nouveau SW trouvé');
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('🔄 Nouvelle version, rechargement...');
+                                window.location.reload();
+                            }
+                        });
                     });
+                })
+                .catch(err => {
+                    console.error('❌ Erreur SW:', err);
+                    const msg = document.createElement('div');
+                    msg.style.cssText = 'position:fixed;bottom:10px;left:10px;background:red;color:white;padding:5px;z-index:9999;font-size:12px;border-radius:5px;';
+                    msg.textContent = '⚠️ Mode hors ligne non disponible: ' + err.message;
+                    document.body.appendChild(msg);
+                    setTimeout(() => msg.remove(), 5000);
                 });
-            })
-            .catch(err => {
-                console.error('❌ Erreur SW:', err);
-                // Afficher une notification visible
-                const msg = document.createElement('div');
-                msg.style.cssText = 'position:fixed;bottom:10px;left:10px;background:red;color:white;padding:5px;z-index:9999;font-size:12px;border-radius:5px;';
-                msg.textContent = '⚠️ Mode hors ligne non disponible: ' + err.message;
-                document.body.appendChild(msg);
-                setTimeout(() => msg.remove(), 5000);
-            });
-    });
+        });
+        
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            console.log('🔄 Rechargement...');
+            window.location.reload();
+        });
+    } else {
+        console.warn('⚠️ Service Worker non supporté');
+    }
+    </script>
     
-    // Rafraîchir quand le SW prend le contrôle
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (refreshing) return;
-        refreshing = true;
-        console.log('🔄 Rechargement...');
-        window.location.reload();
-    });
-} else {
-    console.warn('⚠️ Service Worker non supporté');
-}
-</script>
     <!-- Bibliothèque pour générer des PDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </body>
 </html>
