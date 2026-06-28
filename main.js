@@ -2775,6 +2775,8 @@ class POSManager {
                 else if (sale.paymentMethod === 'partial') paymentMethodText = 'Partiel';
                 else paymentMethodText = sale.paymentMethod;
 
+                const showButtons = idx === 0;
+
                 return `
                     <tr>
                         <td>${sale.invoiceNumber || 'N/A'}</td>
@@ -2793,6 +2795,22 @@ class POSManager {
                         <td>${sale.paymentGiven ? sale.paymentGiven.toFixed(2) + ' DH' : '-'}</td>
                         <td>${sale.remaining ? sale.remaining.toFixed(2) + ' DH' : '-'}</td>
                         <td>${paymentMethodText}</td>
+                        <td>
+                            ${showButtons ? `
+                                <button class="btn-action btn-pdf me-1" onclick="window.salesManager.generateSalePDF(${sale.id})" title="Télécharger PDF" style="color: #e74c3c;">
+                                    <i class="fas fa-file-pdf"></i>
+                                </button>
+                                <button class="btn-action btn-whatsapp me-1" onclick="window.salesManager.sendSaleWhatsApp(${sale.id})" title="Envoyer sur WhatsApp" style="color: #25D366;">
+                                    <i class="fab fa-whatsapp"></i>
+                                </button>
+                                <button class="btn-action btn-edit me-1" onclick="window.salesManager.viewSale(${sale.id})" title="Voir détails">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-action btn-delete" onclick="window.salesManager.deleteSale(${sale.id})" title="Supprimer">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -3013,7 +3031,136 @@ class SalesManager {
         document.getElementById('salesProfit').textContent = `${totalProfit.toFixed(2)} DH`;
     }
 
-    // NOUVELLE MÉTHODE - Générer PDF pour une vente
+    // ==================== MÉTHODES D'EXPORT EXCEL POUR LES VENTES ====================
+
+    async exportSalesWithExcel() {
+        try {
+            const sales = await this.db.getAll('sales');
+            
+            if (sales.length === 0) {
+                this.showNotification('❌ Aucune vente à exporter', 'warning');
+                return;
+            }
+
+            const exportData = [];
+            
+            sales.forEach(sale => {
+                if (sale.items && sale.items.length > 0) {
+                    sale.items.forEach(item => {
+                        const priceCost = item.priceCost || (item.unitPriceCost || 0) * item.quantity || 0;
+                        const profit = item.profit || (item.unitProfit || 0) * item.quantity || 0;
+                        const paidAmount = sale.paymentGiven || 0;
+                        
+                        exportData.push({
+                            'N° Facture': sale.invoiceNumber || 'N/A',
+                            'ID Vente': sale.id || 'N/A',
+                            'Date': new Date(sale.date).toLocaleDateString('fr-FR'),
+                            'Heure': new Date(sale.date).toLocaleTimeString('fr-FR'),
+                            'Client': sale.customerName || 'Client Passager',
+                            'ID Client': sale.customerId || '-',
+                            'Produit': item.productName || 'N/A',
+                            'Quantité': item.quantity || 0,
+                            'Prix Unitaire (DH)': item.price ? Number(item.price).toFixed(2) : '0.00',
+                            'Prix Revient (DH)': Number(priceCost).toFixed(2),
+                            'Profit Unitaire (DH)': Number(item.unitProfit || 0).toFixed(2),
+                            'Total Produit (DH)': item.total ? Number(item.total).toFixed(2) : '0.00',
+                            'Profit Produit (DH)': Number(profit).toFixed(2),
+                            'Remise (DH)': Number(sale.discount || 0).toFixed(2),
+                            'Total Vente (DH)': Number(sale.total || 0).toFixed(2),
+                            'Payé (DH)': Number(paidAmount).toFixed(2),
+                            'Reste (DH)': Number(sale.remaining || 0).toFixed(2),
+                            'Mode Paiement': this.getPaymentMethodText(sale.paymentMethod),
+                            'Statut': this.getSaleStatus(sale)
+                        });
+                    });
+                } else {
+                    exportData.push({
+                        'N° Facture': sale.invoiceNumber || 'N/A',
+                        'ID Vente': sale.id || 'N/A',
+                        'Date': new Date(sale.date).toLocaleDateString('fr-FR'),
+                        'Heure': new Date(sale.date).toLocaleTimeString('fr-FR'),
+                        'Client': sale.customerName || 'Client Passager',
+                        'ID Client': sale.customerId || '-',
+                        'Produit': 'Sans produit',
+                        'Quantité': 0,
+                        'Prix Unitaire (DH)': '0.00',
+                        'Prix Revient (DH)': '0.00',
+                        'Profit Unitaire (DH)': '0.00',
+                        'Total Produit (DH)': '0.00',
+                        'Profit Produit (DH)': '0.00',
+                        'Remise (DH)': Number(sale.discount || 0).toFixed(2),
+                        'Total Vente (DH)': Number(sale.total || 0).toFixed(2),
+                        'Payé (DH)': Number(sale.paymentGiven || 0).toFixed(2),
+                        'Reste (DH)': Number(sale.remaining || 0).toFixed(2),
+                        'Mode Paiement': this.getPaymentMethodText(sale.paymentMethod),
+                        'Statut': this.getSaleStatus(sale)
+                    });
+                }
+            });
+
+            await this.generateExcelFile(exportData, 'ventes');
+            this.showNotification(`✅ Export réussi ! ${sales.length} vente(s) exportée(s)`, 'success');
+            
+        } catch (error) {
+            console.error('Erreur export ventes:', error);
+            this.showNotification('❌ Erreur lors de l\'export', 'error');
+        }
+    }
+
+    getPaymentMethodText(method) {
+        const methods = {
+            'cash': 'Espèces',
+            'credit': 'Crédit',
+            'partial': 'Partiel'
+        };
+        return methods[method] || method || 'N/A';
+    }
+
+    getSaleStatus(sale) {
+        if (sale.status === 'paid') return 'Payé';
+        if (sale.remaining && sale.remaining > 0) return 'Partiel';
+        if (sale.paymentMethod === 'credit') return 'Crédit';
+        return 'Complet';
+    }
+
+    async generateExcelFile(data, filename) {
+        if (!data || data.length === 0) {
+            this.showNotification('❌ Aucune donnée à exporter', 'warning');
+            return;
+        }
+        
+        const headers = Object.keys(data[0]);
+        const csvRows = [];
+        
+        csvRows.push(headers.join(','));
+        
+        data.forEach(row => {
+            const values = headers.map(header => {
+                const value = row[header] !== undefined && row[header] !== null ? row[header] : '';
+                if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            });
+            csvRows.push(values.join(','));
+        });
+
+        const csvString = '\uFEFF' + csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        const date = new Date().toISOString().split('T')[0];
+        link.download = `${filename}_${date}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    // ==================== AUTRES MÉTHODES ====================
+
     async generateSalePDF(saleId) {
         try {
             const sale = this.sales.find(s => s.id === saleId);
@@ -3022,7 +3169,6 @@ class SalesManager {
                 return;
             }
 
-            // Récupérer les informations du client
             let customerPhone = '';
             let customerWhatsapp = '';
             if (sale.customerId) {
@@ -3033,11 +3179,9 @@ class SalesManager {
                 }
             }
 
-            // Créer le PDF
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // En-tête
             doc.setFontSize(20);
             doc.setTextColor(0, 0, 0);
             doc.text('MiniMarket Pro', 105, 20, { align: 'center' });
@@ -3046,7 +3190,6 @@ class SalesManager {
             doc.setTextColor(100, 100, 100);
             doc.text('Facture de vente', 105, 30, { align: 'center' });
             
-            // Informations de la facture
             doc.setFontSize(10);
             doc.setTextColor(0, 0, 0);
             doc.text(`N° Facture: ${sale.invoiceNumber || 'N/A'}`, 20, 45);
@@ -3057,7 +3200,6 @@ class SalesManager {
                 doc.text(`Tél: ${customerPhone}`, 20, 66);
             }
             
-            // Tableau des produits
             const tableColumn = ["Produit", "Quantité", "Prix unit.", "Total"];
             const tableRows = [];
             
@@ -3083,7 +3225,6 @@ class SalesManager {
                 styles: { fontSize: 9 }
             });
             
-            // Récapitulatif
             const finalY = doc.lastAutoTable.finalY + 10;
             
             doc.setFontSize(10);
@@ -3104,7 +3245,6 @@ class SalesManager {
                 doc.text(`Reste: ${sale.remaining.toFixed(2)} DH`, 150, finalY + 35);
             }
             
-            // Mode de paiement
             doc.setTextColor(0, 0, 0);
             let paymentText = 'Paiement: ';
             if (sale.paymentMethod === 'cash') paymentText += 'Espèces';
@@ -3114,13 +3254,11 @@ class SalesManager {
             
             doc.text(paymentText, 20, finalY + 10);
             
-            // Pied de page
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
             doc.text('Merci de votre confiance !', 105, 280, { align: 'center' });
             doc.text(`Généré le ${new Date().toLocaleString('fr-FR')}`, 105, 285, { align: 'center' });
             
-            // Sauvegarder le PDF
             doc.save(`facture_${sale.invoiceNumber || sale.id}.pdf`);
             
             this.showNotification('✅ PDF généré avec succès', 'success');
@@ -3131,67 +3269,57 @@ class SalesManager {
         }
     }
 
-    // NOUVELLE MÉTHODE - Envoyer la facture par WhatsApp
-  // NOUVELLE MÉTHODE CORRIGÉE - Envoyer la facture par WhatsApp
-// Alternative avec l'API WhatsApp
-async sendSaleWhatsApp(saleId) {
-    try {
-        const sale = this.sales.find(s => s.id === saleId);
-        if (!sale) {
-            this.showNotification('Vente non trouvée', 'error');
-            return;
-        }
-
-        if (!sale.customerId) {
-            this.showNotification('Cette vente n\'a pas de client associé', 'warning');
-            return;
-        }
-
-        const customer = await this.db.getById('customers', sale.customerId);
-        if (!customer) {
-            this.showNotification('Client non trouvé', 'error');
-            return;
-        }
-
-        let phoneNumber = customer.whatsapp || customer.phone;
-        if (!phoneNumber) {
-            this.showNotification('Ce client n\'a pas de numéro de téléphone', 'warning');
-            return;
-        }
-
-        // Nettoyer le numéro
-        phoneNumber = phoneNumber.replace(/\s+/g, '').replace(/[-.]/g, '');
-        
-        // Garder le format local (avec 0 au début) pour l'API WhatsApp
-        // WhatsApp Web accepte les deux formats
-        
-        // Créer le message (simplifié pour tester)
-        let message = `Facture ${sale.invoiceNumber} - ${sale.total} DH`;
-        
-        // Essayer différents formats d'URL
-        const urls = [
-            `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`,
-            `https://web.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`,
-            `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-        ];
-        
-        // Essayer chaque URL jusqu'à ce qu'une fonctionne
-        for (const url of urls) {
-            try {
-                window.open(url, '_blank');
-                break;
-            } catch (e) {
-                console.log('URL échouée:', url);
+    async sendSaleWhatsApp(saleId) {
+        try {
+            const sale = this.sales.find(s => s.id === saleId);
+            if (!sale) {
+                this.showNotification('Vente non trouvée', 'error');
+                return;
             }
+
+            if (!sale.customerId) {
+                this.showNotification('Cette vente n\'a pas de client associé', 'warning');
+                return;
+            }
+
+            const customer = await this.db.getById('customers', sale.customerId);
+            if (!customer) {
+                this.showNotification('Client non trouvé', 'error');
+                return;
+            }
+
+            let phoneNumber = customer.whatsapp || customer.phone;
+            if (!phoneNumber) {
+                this.showNotification('Ce client n\'a pas de numéro de téléphone', 'warning');
+                return;
+            }
+
+            phoneNumber = phoneNumber.replace(/\s+/g, '').replace(/[-.]/g, '');
+            
+            let message = `Facture ${sale.invoiceNumber} - ${sale.total} DH`;
+            
+            const urls = [
+                `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`,
+                `https://web.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`,
+                `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+            ];
+            
+            for (const url of urls) {
+                try {
+                    window.open(url, '_blank');
+                    break;
+                } catch (e) {
+                    console.log('URL échouée:', url);
+                }
+            }
+            
+            this.showNotification('✅ WhatsApp ouvert', 'success');
+            
+        } catch (error) {
+            console.error('Erreur WhatsApp:', error);
+            this.showNotification('❌ Erreur', 'error');
         }
-        
-        this.showNotification('✅ WhatsApp ouvert', 'success');
-        
-    } catch (error) {
-        console.error('Erreur WhatsApp:', error);
-        this.showNotification('❌ Erreur', 'error');
     }
-}
 
     renderSalesTable() {
         const tbody = document.getElementById('salesHistoryTableBody');
@@ -3216,8 +3344,6 @@ async sendSaleWhatsApp(saleId) {
                 else paymentMethodText = sale.paymentMethod;
 
                 const remaining = (sale.status === 'paid') ? 0 : (sale.remaining || 0);
-
-                // Ne montrer les boutons que pour la première ligne de chaque vente
                 const showButtons = idx === 0;
 
                 return `
@@ -3842,7 +3968,155 @@ class CreditManager {
         document.getElementById('unpaidCredits').textContent = unpaidCredits;
     }
 
-    // NOUVELLE MÉTHODE - Générer PDF pour un crédit
+    // ==================== MÉTHODES D'EXPORT EXCEL POUR LES CRÉDITS ====================
+
+    async exportCreditsWithExcel() {
+        try {
+            const credits = await this.db.getAll('credits');
+            
+            if (credits.length === 0) {
+                this.showNotification('❌ Aucun crédit à exporter', 'warning');
+                return;
+            }
+
+            const exportData = [];
+            
+            credits.forEach(credit => {
+                let paidAmount = 0;
+                if (credit.paymentHistory && credit.paymentHistory.length > 0) {
+                    paidAmount = credit.paymentHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
+                } else if (credit.paid) {
+                    paidAmount = credit.paid;
+                } else if (credit.paidAmount) {
+                    paidAmount = credit.paidAmount;
+                }
+                
+                const remaining = credit.remaining || credit.amount || 0;
+                const isOverdue = credit.dueDate && new Date(credit.dueDate) < new Date() && credit.status === 'active';
+                
+                if (credit.items && credit.items.length > 0) {
+                    credit.items.forEach(item => {
+                        const priceCost = item.priceCost || (item.unitPriceCost || 0) * item.quantity || 0;
+                        const profit = item.profit || (item.unitProfit || 0) * item.quantity || 0;
+                        
+                        exportData.push({
+                            'N° Facture': credit.saleId || 'N/A',
+                            'ID Crédit': credit.id || 'N/A',
+                            'Date': credit.created_at ? new Date(credit.created_at).toLocaleDateString('fr-FR') : 'N/A',
+                            'Client': credit.customerName || 'Client inconnu',
+                            'ID Client': credit.customerId || '-',
+                            'Produit': item.productName || 'N/A',
+                            'Quantité': item.quantity || 0,
+                            'Prix Vente (DH)': item.price ? Number(item.price).toFixed(2) : '0.00',
+                            'Prix Revient (DH)': Number(priceCost).toFixed(2),
+                            'Profit Unitaire (DH)': Number(item.unitProfit || 0).toFixed(2),
+                            'Total Produit (DH)': item.total ? Number(item.total).toFixed(2) : '0.00',
+                            'Profit Total (DH)': Number(profit).toFixed(2),
+                            'Montant Total (DH)': Number(credit.amount || 0).toFixed(2),
+                            'Remise (DH)': Number(credit.discount || 0).toFixed(2),
+                            'Payé (DH)': Number(paidAmount).toFixed(2),
+                            'Reste (DH)': Number(remaining).toFixed(2),
+                            'Statut': this.getCreditStatus(credit),
+                            'Mode Paiement': this.getCreditPaymentMethod(credit.paymentMethod),
+                            'Date Échéance': credit.dueDate ? new Date(credit.dueDate).toLocaleDateString('fr-FR') : '-',
+                            'En Retard': isOverdue ? 'Oui' : 'Non',
+                            'Description': credit.description || ''
+                        });
+                    });
+                } else {
+                    exportData.push({
+                        'N° Facture': credit.saleId || 'N/A',
+                        'ID Crédit': credit.id || 'N/A',
+                        'Date': credit.created_at ? new Date(credit.created_at).toLocaleDateString('fr-FR') : 'N/A',
+                        'Client': credit.customerName || 'Client inconnu',
+                        'ID Client': credit.customerId || '-',
+                        'Produit': 'Crédit manuel',
+                        'Quantité': 0,
+                        'Prix Vente (DH)': '0.00',
+                        'Prix Revient (DH)': '0.00',
+                        'Profit Unitaire (DH)': '0.00',
+                        'Total Produit (DH)': '0.00',
+                        'Profit Total (DH)': '0.00',
+                        'Montant Total (DH)': Number(credit.amount || 0).toFixed(2),
+                        'Remise (DH)': Number(credit.discount || 0).toFixed(2),
+                        'Payé (DH)': Number(paidAmount).toFixed(2),
+                        'Reste (DH)': Number(remaining).toFixed(2),
+                        'Statut': this.getCreditStatus(credit),
+                        'Mode Paiement': this.getCreditPaymentMethod(credit.paymentMethod),
+                        'Date Échéance': credit.dueDate ? new Date(credit.dueDate).toLocaleDateString('fr-FR') : '-',
+                        'En Retard': isOverdue ? 'Oui' : 'Non',
+                        'Description': credit.description || ''
+                    });
+                }
+            });
+
+            await this.generateExcelFile(exportData, 'credits');
+            this.showNotification(`✅ Export réussi ! ${credits.length} crédit(s) exporté(s)`, 'success');
+            
+        } catch (error) {
+            console.error('Erreur export crédits:', error);
+            this.showNotification('❌ Erreur lors de l\'export', 'error');
+        }
+    }
+
+    getCreditStatus(credit) {
+        if (credit.status === 'paid') return 'Payé';
+        if (credit.status === 'active') {
+            if (credit.dueDate && new Date(credit.dueDate) < new Date()) {
+                return 'En retard';
+            }
+            return 'Actif';
+        }
+        return credit.status || 'N/A';
+    }
+
+    getCreditPaymentMethod(method) {
+        const methods = {
+            'cash': 'Espèces',
+            'credit': 'Crédit',
+            'partial': 'Partiel'
+        };
+        return methods[method] || method || 'N/A';
+    }
+
+    async generateExcelFile(data, filename) {
+        if (!data || data.length === 0) {
+            this.showNotification('❌ Aucune donnée à exporter', 'warning');
+            return;
+        }
+        
+        const headers = Object.keys(data[0]);
+        const csvRows = [];
+        
+        csvRows.push(headers.join(','));
+        
+        data.forEach(row => {
+            const values = headers.map(header => {
+                const value = row[header] !== undefined && row[header] !== null ? row[header] : '';
+                if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            });
+            csvRows.push(values.join(','));
+        });
+
+        const csvString = '\uFEFF' + csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        const date = new Date().toISOString().split('T')[0];
+        link.download = `${filename}_${date}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    // ==================== AUTRES MÉTHODES ====================
+
     async generateCreditPDF(creditId) {
         try {
             const credit = this.credits.find(c => c.id === creditId);
@@ -3851,7 +4125,6 @@ class CreditManager {
                 return;
             }
 
-            // Récupérer les informations du client
             let customerPhone = '';
             let customerWhatsapp = '';
             if (credit.customerId) {
@@ -3862,11 +4135,9 @@ class CreditManager {
                 }
             }
 
-            // Créer le PDF
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // En-tête
             doc.setFontSize(20);
             doc.setTextColor(0, 0, 0);
             doc.text('MiniMarket Pro', 105, 20, { align: 'center' });
@@ -3875,7 +4146,6 @@ class CreditManager {
             doc.setTextColor(100, 100, 100);
             doc.text('Relevé de crédit', 105, 30, { align: 'center' });
             
-            // Informations du crédit
             doc.setFontSize(10);
             doc.setTextColor(0, 0, 0);
             doc.text(`N° Facture: ${credit.saleId || 'N/A'}`, 20, 45);
@@ -3886,7 +4156,6 @@ class CreditManager {
                 doc.text(`Tél: ${customerPhone}`, 20, 66);
             }
             
-            // Tableau des produits si disponibles
             if (credit.items && credit.items.length > 0) {
                 const tableColumn = ["Produit", "Quantité", "Prix unit.", "Total"];
                 const tableRows = [];
@@ -3916,7 +4185,6 @@ class CreditManager {
                 var finalY = 85;
             }
             
-            // Informations du crédit
             doc.setFontSize(10);
             doc.text('Détails du crédit', 20, finalY);
             doc.text(`Montant total: ${credit.amount.toFixed(2)} DH`, 20, finalY + 7);
@@ -3925,7 +4193,6 @@ class CreditManager {
                 doc.text(`Remise: -${credit.discount.toFixed(2)} DH`, 20, finalY + 14);
             }
             
-            // Calculer le montant payé
             let paidAmount = 0;
             if (credit.paymentHistory && credit.paymentHistory.length > 0) {
                 paidAmount = credit.paymentHistory.reduce((sum, p) => sum + p.amount, 0);
@@ -3939,25 +4206,21 @@ class CreditManager {
             doc.setTextColor(231, 76, 60);
             doc.text(`Reste à payer: ${(credit.remaining || credit.amount).toFixed(2)} DH`, 20, finalY + 30);
             
-            // Date d'échéance
             doc.setFontSize(10);
             doc.setTextColor(0, 0, 0);
             if (credit.dueDate) {
                 doc.text(`Date d'échéance: ${new Date(credit.dueDate).toLocaleDateString('fr-FR')}`, 20, finalY + 40);
             }
             
-            // Statut
             const statusText = credit.status === 'paid' ? 'Payé' : 
                               (credit.status === 'active' ? 'En cours' : 'En retard');
             doc.text(`Statut: ${statusText}`, 20, finalY + 47);
             
-            // Pied de page
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
             doc.text('Merci de votre confiance !', 105, 280, { align: 'center' });
             doc.text(`Généré le ${new Date().toLocaleString('fr-FR')}`, 105, 285, { align: 'center' });
             
-            // Sauvegarder le PDF
             doc.save(`credit_${credit.saleId || credit.id}.pdf`);
             
             this.showNotification('✅ PDF généré avec succès', 'success');
@@ -3968,112 +4231,98 @@ class CreditManager {
         }
     }
 
-    // NOUVELLE MÉTHODE - Envoyer le relevé de crédit par WhatsApp
-// NOUVELLE MÉTHODE CORRIGÉE - Envoyer le relevé de crédit par WhatsApp
-async sendCreditWhatsApp(creditId) {
-    try {
-        const credit = this.credits.find(c => c.id === creditId);
-        if (!credit) {
-            this.showNotification('Crédit non trouvé', 'error');
-            return;
-        }
-
-        if (!credit.customerId) {
-            this.showNotification('Ce crédit n\'a pas de client associé', 'warning');
-            return;
-        }
-
-        const customer = await this.db.getById('customers', credit.customerId);
-        if (!customer) {
-            this.showNotification('Client non trouvé', 'error');
-            return;
-        }
-
-        // Récupérer le numéro (WhatsApp en priorité, sinon téléphone)
-        let phoneNumber = customer.whatsapp || customer.phone;
-        if (!phoneNumber) {
-            this.showNotification('Ce client n\'a pas de numéro de téléphone', 'warning');
-            return;
-        }
-
-        // Nettoyer le numéro (enlever les espaces, tirets, etc.)
-        phoneNumber = phoneNumber.replace(/\s+/g, '').replace(/[-.]/g, '');
-        
-        // Format international : si commence par 0, remplacer par 212 (Maroc)
-        if (phoneNumber.startsWith('0')) {
-            phoneNumber = '212' + phoneNumber.substring(1);
-        }
-        
-        // S'assurer qu'il n'y a pas de + au début
-        phoneNumber = phoneNumber.replace(/^\+/, '');
-
-        // Calculer le montant payé
-        let paidAmount = 0;
-        if (credit.paymentHistory && credit.paymentHistory.length > 0) {
-            paidAmount = credit.paymentHistory.reduce((sum, p) => sum + p.amount, 0);
-        } else if (credit.paid) {
-            paidAmount = credit.paid;
-        } else if (credit.paidAmount) {
-            paidAmount = credit.paidAmount;
-        }
-        
-        const remaining = credit.remaining || credit.amount;
-        
-        // Vérifier si en retard
-        const today = new Date();
-        const isLate = credit.dueDate && new Date(credit.dueDate) < today && remaining > 0;
-        
-        // Créer le message
-        let message = `*MiniMarket Pro - Relevé de crédit*\n\n`;
-        message += `📅 *Date:* ${credit.created_at ? new Date(credit.created_at).toLocaleDateString('fr-FR') : 'N/A'}\n`;
-        message += `🧾 *N° Facture:* ${credit.saleId || 'N/A'}\n`;
-        message += `👤 *Client:* ${credit.customerName}\n\n`;
-        
-        if (credit.items && credit.items.length > 0) {
-            message += `📦 *Produits:*\n`;
-            credit.items.forEach(item => {
-                message += `• ${item.productName} x${item.quantity} = ${item.total.toFixed(2)} DH\n`;
-            });
-            message += '\n';
-        }
-        
-        message += `💰 *Détails du crédit:*\n`;
-        message += `Montant total: ${credit.amount.toFixed(2)} DH\n`;
-        
-        if (credit.discount > 0) {
-            message += `Remise: -${credit.discount.toFixed(2)} DH\n`;
-        }
-        
-        message += `Montant payé: ${paidAmount.toFixed(2)} DH\n`;
-        message += `*Reste à payer: ${remaining.toFixed(2)} DH*\n`;
-        
-        if (credit.dueDate) {
-            const dueDate = new Date(credit.dueDate).toLocaleDateString('fr-FR');
-            message += `📆 *Date d'échéance:* ${dueDate}`;
-            if (isLate) {
-                message += ` ⚠️ *EN RETARD*`;
+    async sendCreditWhatsApp(creditId) {
+        try {
+            const credit = this.credits.find(c => c.id === creditId);
+            if (!credit) {
+                this.showNotification('Crédit non trouvé', 'error');
+                return;
             }
-            message += '\n';
+
+            if (!credit.customerId) {
+                this.showNotification('Ce crédit n\'a pas de client associé', 'warning');
+                return;
+            }
+
+            const customer = await this.db.getById('customers', credit.customerId);
+            if (!customer) {
+                this.showNotification('Client non trouvé', 'error');
+                return;
+            }
+
+            let phoneNumber = customer.whatsapp || customer.phone;
+            if (!phoneNumber) {
+                this.showNotification('Ce client n\'a pas de numéro de téléphone', 'warning');
+                return;
+            }
+
+            phoneNumber = phoneNumber.replace(/\s+/g, '').replace(/[-.]/g, '');
+            
+            if (phoneNumber.startsWith('0')) {
+                phoneNumber = '212' + phoneNumber.substring(1);
+            }
+            phoneNumber = phoneNumber.replace(/^\+/, '');
+
+            let paidAmount = 0;
+            if (credit.paymentHistory && credit.paymentHistory.length > 0) {
+                paidAmount = credit.paymentHistory.reduce((sum, p) => sum + p.amount, 0);
+            } else if (credit.paid) {
+                paidAmount = credit.paid;
+            } else if (credit.paidAmount) {
+                paidAmount = credit.paidAmount;
+            }
+            
+            const remaining = credit.remaining || credit.amount;
+            
+            const today = new Date();
+            const isLate = credit.dueDate && new Date(credit.dueDate) < today && remaining > 0;
+            
+            let message = `*MiniMarket Pro - Relevé de crédit*\n\n`;
+            message += `📅 *Date:* ${credit.created_at ? new Date(credit.created_at).toLocaleDateString('fr-FR') : 'N/A'}\n`;
+            message += `🧾 *N° Facture:* ${credit.saleId || 'N/A'}\n`;
+            message += `👤 *Client:* ${credit.customerName}\n\n`;
+            
+            if (credit.items && credit.items.length > 0) {
+                message += `📦 *Produits:*\n`;
+                credit.items.forEach(item => {
+                    message += `• ${item.productName} x${item.quantity} = ${item.total.toFixed(2)} DH\n`;
+                });
+                message += '\n';
+            }
+            
+            message += `💰 *Détails du crédit:*\n`;
+            message += `Montant total: ${credit.amount.toFixed(2)} DH\n`;
+            
+            if (credit.discount > 0) {
+                message += `Remise: -${credit.discount.toFixed(2)} DH\n`;
+            }
+            
+            message += `Montant payé: ${paidAmount.toFixed(2)} DH\n`;
+            message += `*Reste à payer: ${remaining.toFixed(2)} DH*\n`;
+            
+            if (credit.dueDate) {
+                const dueDate = new Date(credit.dueDate).toLocaleDateString('fr-FR');
+                message += `📆 *Date d'échéance:* ${dueDate}`;
+                if (isLate) {
+                    message += ` ⚠️ *EN RETARD*`;
+                }
+                message += '\n';
+            }
+            
+            message += `\n✅ *Merci de régulariser votre situation.*`;
+            
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+            
+            window.open(whatsappUrl, '_blank');
+            
+            this.showNotification('✅ WhatsApp ouvert avec succès', 'success');
+            
+        } catch (error) {
+            console.error('Erreur envoi WhatsApp:', error);
+            this.showNotification('❌ Erreur lors de l\'ouverture de WhatsApp', 'error');
         }
-        
-        message += `\n✅ *Merci de régulariser votre situation.*`;
-        
-        // Encoder le message
-        const encodedMessage = encodeURIComponent(message);
-        
-        // Construire l'URL WhatsApp
-        const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-        
-        // Ouvrir dans un nouvel onglet
-        window.open(whatsappUrl, '_blank');
-        
-        this.showNotification('✅ WhatsApp ouvert avec succès', 'success');
-        
-    } catch (error) {
-        console.error('Erreur envoi WhatsApp:', error);
-        this.showNotification('❌ Erreur lors de l\'ouverture de WhatsApp', 'error');
     }
-}
 
     renderCreditsTable() {
         const tbody = document.getElementById('creditsTableBody');
@@ -4130,8 +4379,6 @@ async sendCreditWhatsApp(creditId) {
                     const profitPerUnit = item.unitProfit || 0;
                     const itemTotalProfit = profitPerUnit * item.quantity;
                     const saleTotalProfit = credit.profitSale || credit.profitTotal || 0;
-                    
-                    // Ne montrer les boutons que pour la première ligne
                     const showButtons = idx === 0;
                     
                     return `
@@ -4645,11 +4892,6 @@ class ChargeManager {
 
     async loadCharges() {
         try {
-            const stores = await this.db.db.objectStoreNames;
-            if (!stores.contains('charges')) {
-                console.log('Création du store charges...');
-            }
-            
             this.charges = await this.db.getAll('charges') || [];
             this.applyFilters();
             this.updateStats();
@@ -5080,7 +5322,6 @@ class ChargeManager {
 
 // ==================== STATISTICS MANAGER ====================
 class StatisticsManager {
-
     constructor() {
         this.db = window.minimarketDB;
         this.charts = {};
@@ -5291,133 +5532,132 @@ class StatisticsManager {
         this.updatePaymentMethodChart();
     }
 
-updateSalesCreditChart() {
-    const ctx = document.getElementById('salesCreditChart').getContext('2d');
-    
-    const groupedData = this.groupDataByPeriod();
-    
-    if (this.charts.salesCredit) {
-        this.charts.salesCredit.destroy();
-    }
+    updateSalesCreditChart() {
+        const ctx = document.getElementById('salesCreditChart').getContext('2d');
+        
+        const groupedData = this.groupDataByPeriod();
+        
+        if (this.charts.salesCredit) {
+            this.charts.salesCredit.destroy();
+        }
 
-    this.charts.salesCredit = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: groupedData.labels,
-            datasets: [
-                {
-                    label: 'Ventes (DH)',
-                    data: groupedData.sales,
-                    borderColor: '#000000', // NOIR
-                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#000000',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Crédits (DH)',
-                    data: groupedData.credits,
-                    borderColor: '#2ecc71', // VERT TURQUOISE
-                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#2ecc71',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    tension: 0.3,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        boxWidth: 8,
-                        font: {
-                            size: 12,
-                            weight: '500'
-                        }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#2ecc71',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} DH`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
+        this.charts.salesCredit = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: groupedData.labels,
+                datasets: [
+                    {
+                        label: 'Ventes (DH)',
+                        data: groupedData.sales,
+                        borderColor: '#000000',
+                        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#000000',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.3,
+                        fill: true
                     },
-                    ticks: {
-                        callback: function(value) {
-                            return value + ' DH';
-                        },
-                        font: {
-                            size: 11
+                    {
+                        label: 'Crédits (DH)',
+                        data: groupedData.credits,
+                        borderColor: '#2ecc71',
+                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#2ecc71',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            font: {
+                                size: 12,
+                                weight: '500'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: '#2ecc71',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} DH`;
+                            }
                         }
                     }
                 },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        font: {
-                            size: 11
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
                         },
-                        maxRotation: 45,
-                        minRotation: 45
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' DH';
+                            },
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 11
+                            },
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
                     }
-                }
-            },
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
-            elements: {
-                line: {
-                    borderJoinStyle: 'round'
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                elements: {
+                    line: {
+                        borderJoinStyle: 'round'
+                    }
                 }
             }
-        }
-    });
-    
-    // Personnalisation des légendes
-    if (this.charts.salesCredit.legend) {
-        const legendItems = this.charts.salesCredit.legend.legendItems;
-        if (legendItems && legendItems.length >= 2) {
-            legendItems[0].fillStyle = '#000000'; // Noir pour Ventes
-            legendItems[0].strokeStyle = '#000000';
-            legendItems[1].fillStyle = '#2ecc71'; // Vert turquoise pour Crédits
-            legendItems[1].strokeStyle = '#2ecc71';
+        });
+        
+        if (this.charts.salesCredit.legend) {
+            const legendItems = this.charts.salesCredit.legend.legendItems;
+            if (legendItems && legendItems.length >= 2) {
+                legendItems[0].fillStyle = '#000000';
+                legendItems[0].strokeStyle = '#000000';
+                legendItems[1].fillStyle = '#2ecc71';
+                legendItems[1].strokeStyle = '#2ecc71';
+            }
         }
     }
-}
 
     groupDataByPeriod() {
         const labels = [];
@@ -5507,79 +5747,78 @@ updateSalesCreditChart() {
         return { labels, sales, credits };
     }
 
-updatePaymentMethodChart() {
-    const ctx = document.getElementById('paymentMethodChart').getContext('2d');
-    
-    const cashSales = this.salesData.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.total || 0), 0);
-    const creditSales = this.salesData.filter(s => s.paymentMethod === 'credit' || s.paymentMethod === 'partial').reduce((sum, s) => sum + (s.total || 0), 0);
-    
-    if (this.charts.paymentMethod) {
-        this.charts.paymentMethod.destroy();
-    }
+    updatePaymentMethodChart() {
+        const ctx = document.getElementById('paymentMethodChart').getContext('2d');
+        
+        const cashSales = this.salesData.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.total || 0), 0);
+        const creditSales = this.salesData.filter(s => s.paymentMethod === 'credit' || s.paymentMethod === 'partial').reduce((sum, s) => sum + (s.total || 0), 0);
+        
+        if (this.charts.paymentMethod) {
+            this.charts.paymentMethod.destroy();
+        }
 
-    this.charts.paymentMethod = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Espèces', 'Crédit'],
-            datasets: [{
-                data: [cashSales, creditSales],
-                backgroundColor: [
-                    '#000000', // NOIR pour Espèces
-                    '#2ecc71'  // VERT TURQUOISE pour Crédit
-                ],
-                borderWidth: 0,
-                hoverOffset: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '65%',
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        usePointStyle: true,
-                        boxWidth: 8,
-                        padding: 20,
-                        font: {
-                            size: 12,
-                            weight: '500'
+        this.charts.paymentMethod = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Espèces', 'Crédit'],
+                datasets: [{
+                    data: [cashSales, creditSales],
+                    backgroundColor: [
+                        '#000000',
+                        '#2ecc71'
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 20,
+                            font: {
+                                size: 12,
+                                weight: '500'
+                            }
                         }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#2ecc71',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.raw;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                            return `${context.label}: ${value.toFixed(2)} DH (${percentage}%)`;
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: '#2ecc71',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${context.label}: ${value.toFixed(2)} DH (${percentage}%)`;
+                            }
                         }
                     }
                 }
             }
-        }
-    });
-    
-    // Personnalisation des légendes
-    if (this.charts.paymentMethod.legend) {
-        const legendItems = this.charts.paymentMethod.legend.legendItems;
-        if (legendItems && legendItems.length >= 2) {
-            legendItems[0].fillStyle = '#000000'; // Noir pour Espèces
-            legendItems[0].strokeStyle = '#000000';
-            legendItems[1].fillStyle = '#2ecc71'; // Vert turquoise pour Crédit
-            legendItems[1].strokeStyle = '#2ecc71';
+        });
+        
+        if (this.charts.paymentMethod.legend) {
+            const legendItems = this.charts.paymentMethod.legend.legendItems;
+            if (legendItems && legendItems.length >= 2) {
+                legendItems[0].fillStyle = '#000000';
+                legendItems[0].strokeStyle = '#000000';
+                legendItems[1].fillStyle = '#2ecc71';
+                legendItems[1].strokeStyle = '#2ecc71';
+            }
         }
     }
-}
 
     updateTopCustomers() {
         const tbody = document.getElementById('topCustomersBody');
