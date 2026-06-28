@@ -1,6039 +1,2355 @@
-// Main JavaScript pour MiniMarket - Version complète avec StatisticsManager
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
-class MiniMarketApp {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.init();
-    }
+<!-- Balises PWA et iOS -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2ecc71">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MiniMarket Pro">
+<meta name="format-detection" content="telephone=no">
+<meta name="mobile-web-app-capable" content="yes">
 
-    async init() {
-        this.showLoading();
-        await this.loadDashboardData();
-        this.hideLoading();
-        this.initEventListeners();
-        
-        setTimeout(() => {
-            window.categoryManager = new CategoryManager();
-            window.supplierManager = new SupplierManager();
-            window.customerManager = new CustomerManager();
-            window.productManager = new ProductManager();
-            window.posManager = new POSManager();
-            window.salesManager = new SalesManager();
-            window.creditManager = new CreditManager();
-            window.chargeManager = new ChargeManager();
-            window.statisticsManager = new StatisticsManager();
-        }, 500);
-    }
+<!-- Icônes pour iOS et Android -->
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon.png">
 
-    showLoading() {
-        const spinner = document.getElementById('loadingSpinner');
-        if (spinner) spinner.style.display = 'flex';
-    }
+<!-- Splash screen pour iOS -->
+<link rel="apple-touch-startup-image" href="icon.png">
 
-    hideLoading() {
-        setTimeout(() => {
-            const spinner = document.getElementById('loadingSpinner');
-            if (spinner) spinner.style.display = 'none';
-        }, 500);
-    }
+<title>MiniMarket Pro - Gestion de magasin</title>
 
-    initEventListeners() {
-        document.querySelectorAll('.list-group-item').forEach((item, index) => {
-            item.style.setProperty('--item-index', index);
-            
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const menuItem = item.getAttribute('data-menu');
-                this.handleMenuClick(menuItem);
-            });
-        });
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        const offcanvasElement = document.getElementById('offcanvasMenu');
-        if (offcanvasElement) {
-            offcanvasElement.addEventListener('hide.bs.offcanvas', () => {
-                console.log('Menu fermé');
-            });
-        }
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-        setInterval(() => this.refreshData(), 30000);
-    }
+<!-- Custom CSS -->
+<link rel="stylesheet" href="style.css">
 
-    async loadDashboardData() {
-        try {
-            await this.loadRecentSales();
-            await this.loadStockAlerts();
-            await this.loadStats();
-        } catch (error) {
-            this.showNotification('Erreur lors du chargement des données', 'error');
-            console.error('Erreur:', error);
-        }
-    }
+<!-- Meta pour iOS (supplémentaires) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-touch-fullscreen" content="yes">
 
-    async loadRecentSales() {
-        const salesBody = document.getElementById('recentSales');
-        if (!salesBody) return;
-        
-        try {
-            const sales = await this.db.getAll('sales');
-            const recentSales = sales.slice(-5).reverse();
-            
-            if (recentSales.length > 0) {
-                salesBody.innerHTML = recentSales.map(sale => `
-                    <tr>
-                        <td>${sale.items && sale.items[0] ? sale.items[0].productName : 'N/A'}</td>
-                        <td>${sale.items && sale.items[0] ? sale.items[0].quantity : 0}</td>
-                        <td>${sale.total || 0} DH</td>
-                        <td>${sale.date ? new Date(sale.date).toLocaleString() : 'N/A'}</td>
-                    </tr>
-                `).join('');
-            } else {
-                salesBody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Aucune vente récente</td></tr>';
-            }
-        } catch (error) {
-            console.error('Erreur chargement ventes:', error);
-        }
-    }
+<!-- Meta pour Android -->
+<meta name="mobile-web-app-capable" content="yes">
 
-    async loadStockAlerts() {
-        const alertsDiv = document.getElementById('stockAlerts');
-        if (!alertsDiv) return;
-        
-        try {
-            const lowStock = await this.db.getLowStockProducts(10);
-            
-            if (lowStock.length > 0) {
-                alertsDiv.innerHTML = lowStock.map((item, index) => `
-                    <div class="alert-stock" style="--alert-index: ${index};">
-                        <div>
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <strong>${item.name}</strong>
-                            <br>
-                            <small>Stock: ${item.currentStock || item.stock || 0} (Seuil: 10)</small>
-                        </div>
-                        <button class="btn-reorder" onclick="app.reorderProduct('${item.name}')">
-                            <i class="fas fa-shopping-cart"></i>
-                        </button>
-                    </div>
-                `).join('');
-            } else {
-                alertsDiv.innerHTML = '<p class="text-success text-center"><i class="fas fa-check-circle"></i> Aucune alerte stock</p>';
-            }
-        } catch (error) {
-            console.error('Erreur chargement alertes:', error);
-        }
-    }
+<!-- Meta pour éviter le zoom sur les inputs -->
+<meta name="format-detection" content="telephone=no, address=no, email=no">
 
-    async loadStats() {
-        try {
-            const todaySales = await this.db.getTotalSalesToday();
-            const totalProducts = await this.db.getTotalProducts();
-            const activeCredits = await this.db.getTotalActiveCredits();
-            const totalCustomers = await this.db.getTotalCustomers();
-            
-            document.getElementById('todaySales').textContent = todaySales ? `${todaySales} DH` : '0 DH';
-            document.getElementById('totalProducts').textContent = totalProducts || '0';
-            document.getElementById('activeCredits').textContent = activeCredits ? `${activeCredits} DH` : '0 DH';
-            document.getElementById('totalCustomers').textContent = totalCustomers || '0';
-        } catch (error) {
-            console.error('Erreur chargement stats:', error);
-        }
-    }
+<!-- Meta pour la couleur de la barre de status sur iOS -->
+<meta name="status-bar-style" content="default">
+</head>
+<body>
 
-    handleMenuClick(menuItem) {
-        const menuTitles = {
-            'pos': 'Point de Vente',
-            'categories': 'Gestion des Catégories',
-            'products': 'Gestion des Produits',
-            'suppliers': 'Gestion des Fournisseurs',
-            'customers': 'Gestion des Clients',
-            'sales': 'Historique des Ventes',
-            'credits': 'Gestion des Crédits',
-            'charges': 'Gestion des Charges',
-            'statistics': 'Statistiques'
-        };
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg fixed-top">
+<div class="container-fluid px-4">
+<a class="navbar-brand d-flex align-items-center" href="#">
+<div class="bg-blue p-2 rounded-circle me-2">
+<i class="fas fa-store text-white"></i>
+</div>
+<span class="brand-text">MiniMarket Pro</span>
+</a>
+<button class="btn btn-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu">
+<i class="fas fa-bars me-2"></i>Menu
+</button>
+</div>
+</nav>
 
-        const title = menuTitles[menuItem] || menuItem;
-        
-        if (menuItem === 'categories') {
-            this.showCategoriesModal();
-        } else if (menuItem === 'suppliers') {
-            this.showSuppliersModal();
-        } else if (menuItem === 'customers') {
-            this.showCustomersModal();
-        } else if (menuItem === 'products') {
-            this.showProductsModal();
-        } else if (menuItem === 'pos') {
-            this.showPOSModal();
-        } else if (menuItem === 'sales') {
-            this.showSalesModal();
-        } else if (menuItem === 'credits') {
-            this.showCreditsModal();
-        } else if (menuItem === 'charges') {
-            this.showChargesModal();
-        } else if (menuItem === 'statistics') {
-            this.showStatisticsModal();
-        } else {
-            this.showNotification(`Navigation vers: ${title}`, 'info');
-        }
-        
-        const offcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('offcanvasMenu'));
-        if (offcanvas) {
-            offcanvas.hide();
-        }
-    }
-    
-    showCategoriesModal() {
-        const modalElement = document.getElementById('categoriesModal');
-        if (!modalElement) return;
-        
-        const categoriesModal = new bootstrap.Modal(modalElement);
-        categoriesModal.show();
-        
-        if (window.categoryManager) {
-            window.categoryManager.loadCategoriesFromDB();
-        }
-    }
+<!-- Offcanvas Menu -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasMenu">
+<div class="offcanvas-header">
+<div class="d-flex align-items-center">
+<div class="menu-icon-header me-3">
+<i class="fas fa-store"></i>
+</div>
+<h5 class="offcanvas-title">Menu Principal</h5>
+</div>
+<button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+</div>
+<div class="offcanvas-body p-0">
+<div class="list-group">
+<a href="#" class="list-group-item" data-menu="pos">
+<div class="menu-icon">
+<i class="fas fa-shopping-cart"></i>
+</div>
+<div>
+<h6>POS</h6>
+<small>Point de vente</small>
+</div>
+</a>
+<a href="#" class="list-group-item" data-menu="categories">
+<div class="menu-icon">
+<i class="fas fa-tags"></i>
+</div>
+<div>
+<h6>Catégories</h6>
+<small>Gérer les catégories</small>
+</div>
+</a>
+<a href="#" class="list-group-item" data-menu="products">
+<div class="menu-icon">
+<i class="fas fa-box"></i>
+</div>
+<div>
+<h6>Produits</h6>
+<small>Inventaire des produits</small>
+</div>
+</a>
+<a href="#" class="list-group-item" data-menu="suppliers">
+<div class="menu-icon">
+<i class="fas fa-truck"></i>
+</div>
+<div>
+<h6>Fournisseurs</h6>
+<small>Gérer les fournisseurs</small>
+</div>
+</a>
+<a href="#" class="list-group-item" data-menu="customers">
+<div class="menu-icon">
+<i class="fas fa-users"></i>
+</div>
+<div>
+<h6>Clients</h6>
+<small>Gérer les clients</small>
+</div>
+</a>
+<a href="#" class="list-group-item" data-menu="sales">
+<div class="menu-icon">
+<i class="fas fa-chart-line"></i>
+</div>
+<div>
+<h6>Ventes</h6>
+<small>Historique des ventes</small>
+</div>
+</a>
+<a href="#" class="list-group-item" data-menu="credits">
+<div class="menu-icon">
+<i class="fas fa-credit-card"></i>
+</div>
+<div>
+<h6>Crédits</h6>
+<small>Gestion des crédits</small>
+</div>
+</a>
+<a href="#" class="list-group-item" data-menu="charges">
+<div class="menu-icon">
+<i class="fas fa-wallet"></i>
+</div>
+<div>
+<h6>Charges</h6>
+<small>Dépenses et charges</small>
+</div>
+</a>
+<a href="#" class="list-group-item" data-menu="statistics">
+<div class="menu-icon">
+<i class="fas fa-chart-pie"></i>
+</div>
+<div>
+<h6>Statistiques</h6>
+<small>Analyses et rapports</small>
+</div>
+</a>
+</div>
+</div>
+</div>
 
-    showSuppliersModal() {
-        const modalElement = document.getElementById('suppliersModal');
-        if (!modalElement) return;
-        
-        const suppliersModal = new bootstrap.Modal(modalElement);
-        suppliersModal.show();
-        
-        if (window.supplierManager) {
-            window.supplierManager.loadSuppliersFromDB();
-        }
-    }
+<!-- Main Content -->
+<main class="container-fluid main-content">
+<div class="row">
+<div class="col-12">
+<h1 class="page-title">Tableau de bord</h1>
+</div>
+</div>
 
-    showCustomersModal() {
-        const modalElement = document.getElementById('customersModal');
-        if (!modalElement) return;
-        
-        const customersModal = new bootstrap.Modal(modalElement);
-        customersModal.show();
-        
-        if (window.customerManager) {
-            window.customerManager.loadCustomersFromDB();
-        }
-    }
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+<div class="col-md-3">
+<div class="card stat-card">
+<div class="card-body">
+<div class="d-flex justify-content-between align-items-center">
+<div>
+<h6>Ventes du jour</h6>
+<h3 id="todaySales">12 500 DH</h3>
+</div>
+<div class="stat-icon">
+<i class="fas fa-shopping-bag"></i>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="card stat-card">
+<div class="card-body">
+<div class="d-flex justify-content-between align-items-center">
+<div>
+<h6>Produits en stock</h6>
+<h3 id="totalProducts">1 234</h3>
+</div>
+<div class="stat-icon">
+<i class="fas fa-boxes"></i>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="card stat-card">
+<div class="card-body">
+<div class="d-flex justify-content-between align-items-center">
+<div>
+<h6>Crédits en cours</h6>
+<h3 id="activeCredits">8 750 DH</h3>
+</div>
+<div class="stat-icon">
+<i class="fas fa-hand-holding-usd"></i>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="card stat-card">
+<div class="card-body">
+<div class="d-flex justify-content-between align-items-center">
+<div>
+<h6>Clients</h6>
+<h3 id="totalCustomers">567</h3>
+</div>
+<div class="stat-icon">
+<i class="fas fa-users"></i>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
 
-    showProductsModal() {
-        const modalElement = document.getElementById('productsModal');
-        if (!modalElement) return;
-        
-        const productsModal = new bootstrap.Modal(modalElement);
-        productsModal.show();
-        
-        if (window.productManager) {
-            window.productManager.loadProductsFromDB();
-        }
-    }
+<!-- Recent Activity -->
+<div class="row">
+<div class="col-md-8">
+<div class="card">
+<div class="card-header">
+<h5>Dernières ventes</h5>
+</div>
+<div class="card-body">
+<div class="table-responsive">
+<table class="table">
+<thead>
+<tr>
+<th>Produit</th>
+<th>Quantité</th>
+<th>Total</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody id="recentSales"></tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card">
+<div class="card-header">
+<h5>Alertes stock</h5>
+</div>
+<div class="card-body" id="stockAlerts"></div>
+</div>
+</div>
+</div>
+</main>
 
-    showPOSModal() {
-        const modalElement = document.getElementById('posModal');
-        if (!modalElement) return;
-        
-        const posModal = new bootstrap.Modal(modalElement);
-        posModal.show();
-        
-        if (window.posManager) {
-            window.posManager.initPOS();
-        }
-    }
+<!-- Modal Categories -->
+<div class="modal fade" id="categoriesModal" tabindex="-1">
+<div class="modal-dialog modal-xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-tags"></i>
+</div>
+<div>
+<span class="d-block">Gestion des Catégories</span>
+<small>Gérez vos catégories de produits</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar -->
+<div class="toolbar mb-4">
+<button class="btn btn-primary" id="addCategoryBtn">
+<i class="fas fa-plus-circle me-2"></i>Nouvelle Catégorie
+</button>
+<button class="btn btn-outline-primary" id="importCategoriesBtn">
+<i class="fas fa-file-import me-2"></i>Importer
+</button>
+<button class="btn btn-outline-primary" id="exportCategoriesBtn">
+<i class="fas fa-file-export me-2"></i>Exporter
+</button>
+<button class="btn btn-outline-primary" id="listCategoriesBtn">
+<i class="fas fa-list me-2"></i>Liste
+</button>
+</div>
 
-    showSalesModal() {
-        const modalElement = document.getElementById('salesModal');
-        if (!modalElement) return;
-        
-        const salesModal = new bootstrap.Modal(modalElement);
-        salesModal.show();
-        
-        if (window.salesManager) {
-            window.salesManager.loadSales();
-        }
-    }
+<!-- Add Form -->
+<div class="card add-form" id="categoryFormCard" style="display: none;">
+<div class="card-body">
+<h6>
+<i class="fas fa-plus-circle me-2"></i>
+Ajouter une catégorie
+</h6>
+<form id="categoryForm">
+<div class="mb-3">
+<label class="form-label">
+Nom de la catégorie <span class="text-danger">*</span>
+</label>
+<input type="text" class="form-control" id="categoryName"
+placeholder="Ex: Électronique, Alimentation, etc." required>
+</div>
+<div class="d-flex gap-2">
+<button type="submit" class="btn btn-primary">
+<i class="fas fa-save me-2"></i>Enregistrer
+</button>
+<button type="button" class="btn btn-outline-secondary" id="cancelCategoryBtn">
+<i class="fas fa-times me-2"></i>Annuler
+</button>
+</div>
+</form>
+</div>
+</div>
 
-    showCreditsModal() {
-        const modalElement = document.getElementById('creditsModal');
-        if (!modalElement) return;
-        
-        const creditsModal = new bootstrap.Modal(modalElement);
-        creditsModal.show();
-        
-        if (window.creditManager) {
-            window.creditManager.loadCredits();
-        }
-    }
+<!-- Categories Table -->
+<div class="card">
+<div class="table-responsive">
+<table class="table" id="categoriesTable">
+<thead>
+<tr>
+<th>ID</th>
+<th>Nom</th>
+<th class="text-center">Nb Produits</th>
+<th class="text-end">Chiffre d'affaire</th>
+<th class="text-end">Profit</th>
+<th>Date création</th>
+<th class="text-center">Actions</th>
+</tr>
+</thead>
+<tbody id="categoriesTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-muted small">
+<i class="fas fa-info-circle me-1"></i>
+Total: <span id="totalCategories">0</span> catégories
+</div>
+</div>
+</div>
+</div>
+</div>
 
-    showChargesModal() {
-        const modalElement = document.getElementById('chargesModal');
-        if (!modalElement) return;
-        
-        const chargesModal = new bootstrap.Modal(modalElement);
-        chargesModal.show();
-        
-        if (window.chargeManager) {
-            window.chargeManager.loadCharges();
-        }
-    }
+<!-- Modal Suppliers -->
+<div class="modal fade" id="suppliersModal" tabindex="-1">
+<div class="modal-dialog modal-xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-truck"></i>
+</div>
+<div>
+<span class="d-block">Gestion des Fournisseurs</span>
+<small>Gérez vos fournisseurs et partenaires</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar -->
+<div class="toolbar mb-4">
+<button class="btn btn-primary" id="addSupplierBtn">
+<i class="fas fa-plus-circle me-2"></i>Nouveau Fournisseur
+</button>
+<button class="btn btn-outline-primary" id="importSuppliersBtn">
+<i class="fas fa-file-import me-2"></i>Importer
+</button>
+<button class="btn btn-outline-primary" id="exportSuppliersBtn">
+<i class="fas fa-file-export me-2"></i>Exporter
+</button>
+<button class="btn btn-outline-primary" id="listSuppliersBtn">
+<i class="fas fa-list me-2"></i>Liste
+</button>
+</div>
 
-    showStatisticsModal() {
-        const modalElement = document.getElementById('statisticsModal');
-        if (!modalElement) return;
-        
-        const statisticsModal = new bootstrap.Modal(modalElement);
-        statisticsModal.show();
-        
-        if (window.statisticsManager) {
-            window.statisticsManager.loadStatistics();
-        }
-    }
+<!-- Add Form -->
+<div class="card add-form" id="supplierFormCard" style="display: none;">
+<div class="card-body">
+<h6>
+<i class="fas fa-plus-circle me-2"></i>
+Ajouter un fournisseur
+</h6>
+<form id="supplierForm">
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Nom du contact <span class="text-danger">*</span>
+</label>
+<input type="text" class="form-control" id="supplierContactName"
+placeholder="Nom et prénom" required>
+<small class="text-muted">Champ obligatoire</small>
+</div>
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Société / Entreprise
+</label>
+<input type="text" class="form-control" id="supplierCompany"
+placeholder="Nom de la société (optionnel)">
+</div>
+</div>
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Téléphone
+</label>
+<input type="tel" class="form-control" id="supplierPhone"
+placeholder="06 xx xx xx xx (optionnel)">
+</div>
+<div class="col-md-6 mb-3">
+<label class="form-label">
+WhatsApp
+</label>
+<input type="tel" class="form-control" id="supplierWhatsapp"
+placeholder="06 xx xx xx xx (optionnel)">
+</div>
+</div>
+<div class="mb-3">
+<label class="form-label">
+Adresse
+</label>
+<textarea class="form-control" id="supplierAddress"
+rows="2" placeholder="Adresse complète (optionnel)"></textarea>
+</div>
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Email
+</label>
+<input type="email" class="form-control" id="supplierEmail"
+placeholder="email@exemple.com (optionnel)">
+</div>
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Chiffre d'affaires
+</label>
+<input type="number" class="form-control" id="supplierRevenue"
+placeholder="0 DH" value="0">
+</div>
+</div>
+<div class="d-flex gap-2">
+<button type="submit" class="btn btn-primary">
+<i class="fas fa-save me-2"></i>Enregistrer
+</button>
+<button type="button" class="btn btn-outline-secondary" id="cancelSupplierBtn">
+<i class="fas fa-times me-2"></i>Annuler
+</button>
+</div>
+</form>
+</div>
+</div>
 
-    reorderProduct(productName) {
-        this.showNotification(`Commande lancée pour: ${productName}`, 'success');
-    }
+<!-- Suppliers Table -->
+<div class="card">
+<div class="table-responsive">
+<table class="table" id="suppliersTable">
+<thead>
+<tr>
+<th>ID</th>
+<th>Contact</th>
+<th>Société</th>
+<th>Téléphone</th>
+<th>WhatsApp</th>
+<th>Adresse</th>
+<th class="text-end">Chiffre d'affaires</th>
+<th class="text-center">Actions</th>
+</tr>
+</thead>
+<tbody id="suppliersTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-muted small">
+<i class="fas fa-info-circle me-1"></i>
+Total: <span id="totalSuppliers">0</span> fournisseurs
+</div>
+</div>
+</div>
+</div>
+</div>
 
-    refreshData() {
-        console.log('Rafraîchissement des données...');
-        this.loadDashboardData();
-    }
+<!-- Modal Customers -->
+<div class="modal fade" id="customersModal" tabindex="-1">
+<div class="modal-dialog modal-xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-users"></i>
+</div>
+<div>
+<span class="d-block">Gestion des Clients</span>
+<small>Gérez vos clients et fidélisez-les</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar -->
+<div class="toolbar mb-4">
+<button class="btn btn-primary" id="addCustomerBtn">
+<i class="fas fa-plus-circle me-2"></i>Nouveau Client
+</button>
+<button class="btn btn-outline-primary" id="importCustomersBtn">
+<i class="fas fa-file-import me-2"></i>Importer
+</button>
+<button class="btn btn-outline-primary" id="exportCustomersBtn">
+<i class="fas fa-file-export me-2"></i>Exporter
+</button>
+<button class="btn btn-outline-primary" id="listCustomersBtn">
+<i class="fas fa-list me-2"></i>Liste
+</button>
+</div>
 
-    showNotification(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = 'toast-notification';
-        
-        const colors = {
-            'success': '#10b981',
-            'error': '#ef4444',
-            'info': '#3b82f6',
-            'warning': '#f59e0b'
-        };
-        
-        const icons = {
-            'success': 'check-circle',
-            'error': 'exclamation-circle',
-            'warning': 'exclamation-triangle',
-            'info': 'info-circle'
-        };
-        
-        toast.style.borderLeftColor = colors[type] || colors.info;
-        toast.innerHTML = `
-            <div class="d-flex align-items-center">
-                <i class="fas fa-${icons[type] || icons.info} me-2" style="color: ${colors[type] || colors.info}"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
-    }
+<!-- Add Form -->
+<div class="card add-form" id="customerFormCard" style="display: none;">
+<div class="card-body">
+<h6>
+<i class="fas fa-plus-circle me-2"></i>
+Ajouter un client
+</h6>
+<form id="customerForm">
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Nom complet <span class="text-danger">*</span>
+</label>
+<input type="text" class="form-control" id="customerName"
+placeholder="Nom et prénom" required>
+<small class="text-muted">Champ obligatoire</small>
+</div>
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Genre
+</label>
+<select class="form-control" id="customerGender">
+<option value="">Sélectionner</option>
+<option value="MASCULIN">Masculin</option>
+<option value="FÉMININ">Féminin</option>
+</select>
+</div>
+</div>
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Téléphone
+</label>
+<input type="tel" class="form-control" id="customerPhone"
+placeholder="06 xx xx xx xx (optionnel)">
+</div>
+<div class="col-md-6 mb-3">
+<label class="form-label">
+WhatsApp
+</label>
+<input type="tel" class="form-control" id="customerWhatsapp"
+placeholder="06 xx xx xx xx (optionnel)">
+</div>
+</div>
+<div class="mb-3">
+<label class="form-label">
+Adresse
+</label>
+<textarea class="form-control" id="customerAddress"
+rows="2" placeholder="Adresse complète (optionnel)"></textarea>
+</div>
+<div class="row">
+<div class="col-md-4 mb-3">
+<label class="form-label">
+Chiffre d'affaires
+</label>
+<input type="number" class="form-control" id="customerRevenue"
+placeholder="0 DH" value="0">
+</div>
+<div class="col-md-4 mb-3">
+<label class="form-label">
+Profit
+</label>
+<input type="number" class="form-control" id="customerProfit"
+placeholder="0 DH" value="0">
+</div>
+<div class="col-md-4 mb-3">
+<label class="form-label">
+Crédit
+</label>
+<input type="number" class="form-control" id="customerCredit"
+placeholder="0 DH" value="0">
+</div>
+</div>
+<div class="mb-3">
+<label class="form-label">
+Description / Notes
+</label>
+<textarea class="form-control" id="customerDescription"
+rows="2" placeholder="Informations complémentaires sur le client"></textarea>
+</div>
+<div class="d-flex gap-2">
+<button type="submit" class="btn btn-primary">
+<i class="fas fa-save me-2"></i>Enregistrer
+</button>
+<button type="button" class="btn btn-outline-secondary" id="cancelCustomerBtn">
+<i class="fas fa-times me-2"></i>Annuler
+</button>
+</div>
+</form>
+</div>
+</div>
+
+<!-- Customers Table -->
+<div class="card">
+<div class="table-responsive">
+<table class="table" id="customersTable">
+<thead>
+<tr>
+<th>ID</th>
+<th>Nom</th>
+<th>Genre</th>
+<th>Adresse</th>
+<th>Téléphone</th>
+<th>WhatsApp</th>
+<th class="text-end">CA</th>
+<th class="text-end">Profit</th>
+<th class="text-end">Crédit</th>
+<th>Description</th>
+<th>Date création</th>
+<th class="text-center">Actions</th>
+</tr>
+</thead>
+<tbody id="customersTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-muted small">
+<i class="fas fa-info-circle me-1"></i>
+Total: <span id="totalCustomers">0</span> clients
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Modal Products AMÉLIORÉ avec recherche et tris -->
+<!-- Modal Products AMÉLIORÉ avec recherche, tris ET DATE CRÉATION -->
+<div class="modal fade" id="productsModal" tabindex="-1">
+<div class="modal-dialog modal-4xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-box"></i>
+</div>
+<div>
+<span class="d-block">Gestion des Produits</span>
+<small>Gérez votre inventaire de produits</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar -->
+<div class="toolbar mb-4">
+<button class="btn btn-primary" id="addProductBtn">
+<i class="fas fa-plus-circle me-2"></i>Nouveau Produit
+</button>
+<button class="btn btn-outline-primary" id="importProductsBtn">
+<i class="fas fa-file-import me-2"></i>Importer
+</button>
+<button class="btn btn-outline-primary" id="exportProductsBtn">
+<i class="fas fa-file-export me-2"></i>Exporter
+</button>
+<button class="btn btn-outline-primary" id="listProductsBtn">
+<i class="fas fa-list me-2"></i>Liste
+</button>
+</div>
+
+<!-- Add Form -->
+<div class="card add-form" id="productFormCard" style="display: none;">
+<div class="card-body">
+<h6>
+<i class="fas fa-plus-circle me-2"></i>
+Ajouter un produit
+</h6>
+<form id="productForm">
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Nom du produit <span class="text-danger">*</span>
+</label>
+<input type="text" class="form-control" id="productName"
+placeholder="Nom du produit" required>
+</div>
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Catégorie <span class="text-danger">*</span>
+</label>
+<select class="form-control" id="productCategory" required>
+<option value="">Sélectionner une catégorie</option>
+<!-- Les options seront chargées dynamiquement -->
+</select>
+<small class="text-muted">Vous pouvez taper pour rechercher</small>
+</div>
+</div>
+<div class="row">
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Box Unit
+</label>
+<input type="number" class="form-control" id="productBoxUnit"
+placeholder="Ex: 12" value="1" min="1" step="1">
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Box Price (DH)
+</label>
+<input type="number" class="form-control" id="productBoxPrice"
+placeholder="0.00" value="0" min="0" step="0.01">
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Price Unit (DH)
+</label>
+<input type="number" class="form-control" id="productPriceUnit"
+placeholder="Calculé automatiquement" readonly style="background-color: var(--gray-100);">
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Price Sell (DH) <span class="text-danger">*</span>
+</label>
+<input type="number" class="form-control" id="productPriceSell"
+placeholder="0.00" value="0" min="0" step="0.01" required>
+</div>
+</div>
+<div class="row">
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Profit (DH)
+</label>
+<input type="number" class="form-control" id="productProfit"
+placeholder="Calculé automatiquement" readonly style="background-color: var(--gray-100);">
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Marque
+</label>
+<input type="text" class="form-control" id="productBrand"
+placeholder="Marque du produit">
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Unité
+</label>
+<select class="form-control" id="productUnit">
+<option value="PIECE">Pièce</option>
+<option value="KG">Kilogramme</option>
+<option value="LITRE">Litre</option>
+<option value="BOITE">Boîte</option>
+<option value="SACHET">Sachet</option>
+<option value="CARTON">Carton</option>
+</select>
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Fournisseur
+</label>
+<select class="form-control" id="productSupplier">
+<option value="">Sélectionner un fournisseur</option>
+<!-- Les options seront chargées dynamiquement -->
+</select>
+</div>
+</div>
+<div class="row">
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Date d'expiration
+</label>
+<input type="date" class="form-control" id="productExpiration">
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Stock actuel <span class="text-danger">*</span>
+</label>
+<input type="number" class="form-control" id="productCurrentStock"
+placeholder="0" value="0" min="0" step="1" required>
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Stock vendu
+</label>
+<input type="number" class="form-control" id="productSoldStock"
+placeholder="0" value="0" min="0" step="1">
+</div>
+<div class="col-md-3 mb-3">
+<label class="form-label">
+Description
+</label>
+<input type="text" class="form-control" id="productDescription"
+placeholder="Description optionnelle">
+</div>
+</div>
+<div class="d-flex gap-2">
+<button type="submit" class="btn btn-primary">
+<i class="fas fa-save me-2"></i>Enregistrer
+</button>
+<button type="button" class="btn btn-outline-secondary" id="cancelProductBtn">
+<i class="fas fa-times me-2"></i>Annuler
+</button>
+</div>
+</form>
+</div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+<div class="card-body">
+<div class="row g-3">
+<div class="col-md-8">
+<label class="form-label">Recherche produit</label>
+<input type="text" class="form-control" id="productSearch"
+placeholder="Nom, marque, catégorie, fournisseur...">
+</div>
+<div class="col-md-4 d-flex align-items-end">
+<button class="btn btn-primary w-100" id="applyProductFilter">
+<i class="fas fa-search me-2"></i>Rechercher
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Products Table avec tris et DATE CRÉATION -->
+<div class="card">
+<div class="table-responsive">
+<table class="table" id="productsTable">
+<thead>
+<tr>
+<th class="sortable" data-sort="id">ID <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="name">Nom <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="category">Catégorie <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="boxUnit">Box Unit <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="boxPrice">Box Price <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="priceUnit">Price Unit <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="priceSell">Price Sell <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="profit">Profit <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="brand">Marque <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="unit">Unité <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="supplier">Fournisseur <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="expiration">Expiration <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="stock">Stock <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="soldStock">Vendu <i class="fas fa-sort ms-1"></i></th>
+<th>Description</th>
+<th class="sortable" data-sort="created_at">Date création <i class="fas fa-sort ms-1"></i></th>
+<th class="text-center">Actions</th>
+</tr>
+</thead>
+<tbody id="productsTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-muted small">
+<i class="fas fa-info-circle me-1"></i>
+Total: <span id="totalProducts">0</span> produits
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Modal POS -->
+<div class="modal fade" id="posModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+<div class="modal-dialog modal-xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-shopping-cart"></i>
+</div>
+<div>
+<span class="d-block">Point de Vente (POS)</span>
+<small id="posStepIndicator">Étape 1: Sélection client</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar -->
+<div class="toolbar mb-4">
+<button class="btn btn-primary" id="newSellBtn">
+<i class="fas fa-plus-circle me-2"></i>Nouvelle Vente
+</button>
+<button class="btn btn-outline-primary" id="importSalesBtn">
+<i class="fas fa-file-import me-2"></i>Importer
+</button>
+<button class="btn btn-outline-primary" id="exportSalesBtn">
+<i class="fas fa-file-export me-2"></i>Exporter
+</button>
+<button class="btn btn-outline-primary" id="listSalesBtn">
+<i class="fas fa-list me-2"></i>Liste des ventes
+</button>
+</div>
+
+<!-- Steps Navigation -->
+<div class="steps-nav mb-4">
+<div class="d-flex justify-content-between">
+<div class="step-item active" id="step1" data-step="1">
+<div class="step-number">1</div>
+<div class="step-label">Client</div>
+</div>
+<div class="step-item" id="step2" data-step="2">
+<div class="step-number">2</div>
+<div class="step-label">Panier</div>
+</div>
+<div class="step-item" id="step3" data-step="3">
+<div class="step-number">3</div>
+<div class="step-label">Paiement</div>
+</div>
+</div>
+</div>
+
+<!-- Step 1: Client Selection -->
+<div id="step1Content" class="step-content active">
+<div class="card">
+<div class="card-body">
+<h6 class="mb-3">Sélectionner un client</h6>
+<div class="mb-3">
+<label class="form-label">Client <span class="text-danger">*</span></label>
+<div class="input-group">
+<select class="form-control" id="saleCustomer" required>
+<option value="">Client Passager (par défaut)</option>
+<!-- Les options seront chargées dynamiquement -->
+</select>
+<button class="btn btn-outline-primary" type="button" id="addQuickCustomerBtn" title="Ajouter un nouveau client">
+<i class="fas fa-user-plus"></i>
+</button>
+</div>
+<small class="text-muted">Vous pouvez taper pour rechercher un client ou ajouter un nouveau client</small>
+</div>
+<div class="d-flex justify-content-end">
+<button class="btn btn-primary" id="nextToCartBtn">
+Suivant <i class="fas fa-arrow-right ms-2"></i>
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Quick Add Customer Modal -->
+<div class="modal fade" id="quickAddCustomerModal" tabindex="-1">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Ajouter un client rapidement</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<form id="quickCustomerForm">
+<div class="mb-3">
+<label class="form-label">Nom complet <span class="text-danger">*</span></label>
+<input type="text" class="form-control" id="quickCustomerName" required>
+</div>
+<div class="mb-3">
+<label class="form-label">Téléphone</label>
+<input type="tel" class="form-control" id="quickCustomerPhone">
+</div>
+<div class="mb-3">
+<label class="form-label">WhatsApp</label>
+<input type="tel" class="form-control" id="quickCustomerWhatsapp">
+</div>
+</form>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+<button type="button" class="btn btn-primary" id="saveQuickCustomerBtn">Enregistrer</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Step 2: Shopping Cart -->
+<div id="step2Content" class="step-content">
+<div class="row">
+<div class="col-md-8">
+<div class="card mb-3">
+<div class="card-body">
+<h6 class="mb-3">Ajouter un produit</h6>
+<div class="row">
+<div class="col-md-6 mb-2">
+<label class="form-label">Produit</label>
+<select class="form-control" id="cartProduct">
+<option value="">Sélectionner un produit</option>
+<!-- Les options seront chargées dynamiquement -->
+</select>
+</div>
+<div class="col-md-3 mb-2">
+<label class="form-label">Quantité</label>
+<input type="number" class="form-control" id="cartQuantity" value="1" min="1">
+</div>
+<div class="col-md-3 mb-2 d-flex align-items-end">
+<button class="btn btn-primary w-100" id="addToCartBtn">
+<i class="fas fa-cart-plus me-2"></i>Ajouter
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="card">
+<div class="card-body">
+<h6 class="mb-3">Panier</h6>
+<div class="table-responsive">
+<table class="table table-sm" id="cartTable">
+<thead>
+<tr>
+<th>Produit</th>
+<th>Prix unitaire</th>
+<th>Quantité</th>
+<th>Total</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="cartItems"></tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card">
+<div class="card-body">
+<h6 class="mb-3">Récapitulatif</h6>
+<div class="d-flex justify-content-between mb-2">
+<span>Sous-total:</span>
+<span id="cartSubtotal">0.00 DH</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span>Remise:</span>
+<span>
+<input type="number" class="form-control form-control-sm" id="cartDiscount" value="0" min="0" style="width: 100px; display: inline-block;"> DH
+</span>
+</div>
+<hr>
+<div class="d-flex justify-content-between mb-3">
+<strong>Total:</strong>
+<strong id="cartTotal">0.00 DH</strong>
+</div>
+<div class="d-flex justify-content-between">
+<button class="btn btn-outline-secondary" id="backToCustomerBtn">
+<i class="fas fa-arrow-left me-2"></i>Retour
+</button>
+<button class="btn btn-primary" id="nextToPaymentBtn">
+Suivant <i class="fas fa-arrow-right ms-2"></i>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Step 3: Payment -->
+<div id="step3Content" class="step-content">
+<div class="row">
+<div class="col-md-6">
+<div class="card">
+<div class="card-body">
+<h6 class="mb-3">Mode de paiement</h6>
+<div class="mb-3">
+<div class="form-check mb-2">
+<input class="form-check-input" type="radio" name="paymentMethod" id="paymentCash" value="cash" checked>
+<label class="form-check-label" for="paymentCash">
+<i class="fas fa-money-bill-wave me-2"></i>Espèces
+</label>
+</div>
+<div class="form-check">
+<input class="form-check-input" type="radio" name="paymentMethod" id="paymentCredit" value="credit">
+<label class="form-check-label" for="paymentCredit">
+<i class="fas fa-credit-card me-2"></i>Crédit
+</label>
+</div>
+</div>
+
+<div id="cashPaymentFields">
+<div class="mb-3">
+<label class="form-label">Montant donné</label>
+<input type="number" class="form-control" id="paymentGiven" value="0" min="0" step="0.01">
+</div>
+<div class="mb-3">
+<label class="form-label">Monnaie à rendre</label>
+<input type="text" class="form-control" id="paymentChange" value="0.00 DH" readonly>
+</div>
+</div>
+
+<div id="creditPaymentFields" style="display: none;">
+<div class="alert alert-info">
+<i class="fas fa-info-circle me-2"></i>
+Cette vente sera enregistrée comme un crédit et apparaîtra dans la gestion des crédits.
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-6">
+<div class="card">
+<div class="card-body">
+<h6 class="mb-3">Récapitulatif de la vente</h6>
+<div class="mb-2">
+<strong>Client:</strong> <span id="paymentCustomer">Client Passager</span>
+</div>
+<div class="mb-2">
+<strong>Total à payer:</strong> <span id="paymentTotal">0.00 DH</span>
+</div>
+<hr>
+<div class="d-flex justify-content-between">
+<button class="btn btn-outline-secondary" id="backToCartBtn">
+<i class="fas fa-arrow-left me-2"></i>Retour
+</button>
+<button class="btn btn-success" id="completeSaleBtn">
+<i class="fas fa-check me-2"></i>Finaliser la vente
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Sales List View -->
+<div id="salesListView" style="display: none;">
+<div class="card">
+<div class="card-body">
+<div class="row mb-3">
+<div class="col-md-4">
+<label class="form-label">Recherche</label>
+<input type="text" class="form-control" id="salesSearch" placeholder="Client, produit, facture...">
+</div>
+<div class="col-md-4">
+<label class="form-label">Filtre date</label>
+<select class="form-control" id="salesDateFilter">
+<option value="today">Aujourd'hui</option>
+<option value="1day">1 jour</option>
+<option value="3days">3 jours</option>
+<option value="1week">1 semaine</option>
+<option value="15days">15 jours</option>
+<option value="1month">1 mois</option>
+<option value="3months">3 mois</option>
+<option value="6months">6 mois</option>
+<option value="1year">1 an</option>
+<option value="all">Toutes les dates</option>
+</select>
+</div>
+<div class="col-md-4 d-flex align-items-end">
+<button class="btn btn-outline-primary w-100" id="applySalesFilter">
+<i class="fas fa-filter me-2"></i>Appliquer filtre
+</button>
+</div>
+</div>
+<div class="table-responsive">
+<table class="table" id="salesTable">
+<thead>
+<tr>
+<th class="sortable" data-sort="invoice">N° Facture <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="id">ID Vente <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="customerId">Client ID <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="customerName">Client Name <i class="fas fa-sort ms-1"></i></th>
+<th>Produit</th>
+<th class="sortable" data-sort="quantity">Quantité <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="price">Prix vente <i class="fas fa-sort ms-1"></i></th>
+<th>Prix revient</th>
+<th>Profit unitaire</th>
+<th class="sortable" data-sort="total">Total produit <i class="fas fa-sort ms-1"></i></th>
+<th>Profit total</th>
+<th class="sortable" data-sort="saleProfit">Profit vente <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="discount">Remise <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="paid">Payé <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="remaining">Reste <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="payment">Paiement <i class="fas fa-sort ms-1"></i></th>
+<th class="text-center">Actions</th>
+</tr>
+</thead>
+<tbody id="salesTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Modal Sales History -->
+<div class="modal fade" id="salesModal" tabindex="-1">
+<div class="modal-dialog modal-4xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-chart-line"></i>
+</div>
+<div>
+<span class="d-block">Historique des Ventes</span>
+<small>Consultez et gérez vos ventes</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar -->
+<div class="toolbar mb-4">
+<button class="btn btn-outline-primary" id="importSalesHistoryBtn">
+<i class="fas fa-file-import me-2"></i>Importer
+</button>
+<button class="btn btn-outline-primary" id="exportSalesHistoryBtn">
+<i class="fas fa-file-export me-2"></i>Exporter
+</button>
+<button class="btn btn-outline-primary" id="refreshSalesListBtn">
+<i class="fas fa-sync-alt me-2"></i>Rafraîchir
+</button>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Nombre de ventes</h6>
+<h3 class="mb-0" id="salesCount">0</h3>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Chiffre d'affaires</h6>
+<h3 class="mb-0" id="salesRevenue">0 DH</h3>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Profit total</h6>
+<h3 class="mb-0 text-success" id="salesProfit">0 DH</h3>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+<div class="card-body">
+<div class="row g-3">
+<div class="col-md-5">
+<label class="form-label">Recherche</label>
+<input type="text" class="form-control" id="salesHistorySearch"
+placeholder="Client, produit ou n° facture...">
+</div>
+<div class="col-md-4">
+<label class="form-label">Période</label>
+<select class="form-control" id="salesHistoryDateFilter">
+<option value="today">Aujourd'hui</option>
+<option value="yesterday">Hier</option>
+<option value="1day">1 jour</option>
+<option value="3days">3 jours</option>
+<option value="1week">1 semaine</option>
+<option value="15days">15 jours</option>
+<option value="1month">1 mois</option>
+<option value="3months">3 mois</option>
+<option value="6months">6 mois</option>
+<option value="1year">1 an</option>
+<option value="all">Toutes les dates</option>
+</select>
+</div>
+<div class="col-md-3 d-flex align-items-end">
+<button class="btn btn-primary w-100" id="applySalesHistoryFilter">
+<i class="fas fa-filter me-2"></i>Filtrer
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Sales Table avec colonne Remise -->
+<div class="card">
+<div class="table-responsive">
+<table class="table" id="salesHistoryTable">
+<thead>
+<tr>
+<th class="sortable" data-sort="invoice">N° Facture <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="id">ID Vente <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="customerId">Client ID <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="customerName">Client Name <i class="fas fa-sort ms-1"></i></th>
+<th>Produit</th>
+<th class="sortable" data-sort="quantity">Quantité <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="price">Prix vente <i class="fas fa-sort ms-1"></i></th>
+<th>Prix revient</th>
+<th>Profit unitaire</th>
+<th class="sortable" data-sort="total">Total produit <i class="fas fa-sort ms-1"></i></th>
+<th>Profit total</th>
+<th class="sortable" data-sort="saleProfit">Profit vente <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="discount">Remise <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="paid">Payé <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="remaining">Reste <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="payment">Paiement <i class="fas fa-sort ms-1"></i></th>
+<th class="text-center">Actions</th>
+</tr>
+</thead>
+<tbody id="salesHistoryTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-muted small">
+<i class="fas fa-info-circle me-1"></i>
+Total: <span id="totalSalesHistory">0</span> ventes
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Modal Credits avec colonne Remise -->
+<!-- Modal Credits avec colonne Remise et Date d'échéance -->
+<div class="modal fade" id="creditsModal" tabindex="-1">
+<div class="modal-dialog modal-4xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-credit-card"></i>
+</div>
+<div>
+<span class="d-block">Gestion des Crédits</span>
+<small>Suivez et gérez les crédits clients</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar -->
+<div class="toolbar mb-4">
+<button class="btn btn-primary" id="addCreditBtn">
+<i class="fas fa-plus-circle me-2"></i>Nouveau Crédit
+</button>
+<button class="btn btn-outline-primary" id="importCreditsBtn">
+<i class="fas fa-file-import me-2"></i>Importer
+</button>
+<button class="btn btn-outline-primary" id="exportCreditsBtn">
+<i class="fas fa-file-export me-2"></i>Exporter
+</button>
+<button class="btn btn-outline-primary" id="refreshCreditsBtn">
+<i class="fas fa-sync-alt me-2"></i>Rafraîchir
+</button>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Total Crédits</h6>
+<h3 class="mb-0" id="totalCredits">0</h3>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Montant Total</h6>
+<h3 class="mb-0" id="totalCreditsAmount">0 DH</h3>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Crédits Impayés</h6>
+<h3 class="mb-0 text-warning" id="unpaidCredits">0</h3>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+<div class="card-body">
+<div class="row g-3">
+<div class="col-md-4">
+<label class="form-label">Recherche</label>
+<input type="text" class="form-control" id="creditSearch"
+placeholder="Client, n° facture...">
+</div>
+<div class="col-md-4">
+<label class="form-label">Statut</label>
+<select class="form-control" id="creditStatusFilter">
+<option value="all">Tous les statuts</option>
+<option value="active">Actifs</option>
+<option value="paid">Payés</option>
+<option value="overdue">En retard</option>
+</select>
+</div>
+<div class="col-md-4 d-flex align-items-end">
+<button class="btn btn-primary w-100" id="applyCreditFilter">
+<i class="fas fa-filter me-2"></i>Filtrer
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Credits Table avec colonne Remise et Date d'échéance -->
+<div class="card">
+<div class="table-responsive">
+<table class="table" id="creditsTable">
+<thead>
+<tr>
+<th class="sortable" data-sort="invoice">N° Facture <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="id">ID Crédit <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="customerId">Client ID <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="customerName">Client Name <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="product">Produit <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="quantity">Quantité <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="priceSell">Prix vente <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="priceCost">Prix revient <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="profitUnit">Profit unitaire <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="totalProduct">Total produit <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="profitTotal">Profit total <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="profitSale">Profit vente <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="discount">Remise <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="paid">Payé <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="remaining">Reste <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="dueDate">Date échéance <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="payment">Paiement <i class="fas fa-sort ms-1"></i></th>
+<th class="text-center">Actions</th>
+</tr>
+</thead>
+<tbody id="creditsTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-muted small">
+<i class="fas fa-info-circle me-1"></i>
+Total: <span id="totalCreditsCount">0</span> crédits
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Payment Modal for Credits -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Effectuer un paiement</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<form id="paymentForm">
+<div class="mb-3">
+<label class="form-label">Client</label>
+<input type="text" class="form-control" id="paymentCustomerName" readonly>
+</div>
+<div class="mb-3">
+<label class="form-label">Montant total</label>
+<input type="text" class="form-control" id="paymentTotalAmount" readonly>
+</div>
+<div class="mb-3">
+<label class="form-label">Reste à payer</label>
+<input type="text" class="form-control" id="paymentRemainingAmount" readonly>
+</div>
+<div class="mb-3">
+<label class="form-label">Montant payé <span class="text-danger">*</span></label>
+<input type="number" class="form-control" id="paymentAmount" value="0" min="0" step="0.01" required>
+</div>
+<input type="hidden" id="paymentCreditId">
+</form>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+<button type="button" class="btn btn-success" id="confirmPaymentBtn">Confirmer le paiement</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Add Credit Modal -->
+<!-- Add Credit Modal CORRIGÉ pour correspondre aux 19 colonnes du tableau -->
+<div class="modal fade" id="addCreditModal" tabindex="-1">
+<div class="modal-dialog modal-4xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-credit-card"></i>
+</div>
+<div>
+<span class="d-block">Ajouter un Crédit Manuel</span>
+<small>Créez un crédit correspondant aux 19 colonnes du tableau</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<form id="addCreditForm">
+<!-- Ligne 1 : N° Facture, ID Crédit (auto), Date -->
+<div class="row mb-3">
+<div class="col-md-4">
+<label class="form-label">N° Facture <span class="text-muted">(optionnel)</span></label>
+<input type="text" class="form-control" id="creditInvoice"
+placeholder="INV-XXXXX" value="">
+<small class="text-muted">Laissez vide pour génération auto</small>
+</div>
+<div class="col-md-4">
+<label class="form-label">ID Crédit <span class="text-muted">(auto)</span></label>
+<input type="text" class="form-control" value="Généré automatiquement" disabled readonly
+style="background-color: var(--gray-100);">
+</div>
+<div class="col-md-4">
+<label class="form-label">Date <span class="text-danger">*</span></label>
+<input type="date" class="form-control" id="creditDate"
+value="" required>
+</div>
+</div>
+
+<!-- Ligne 2 : Client ID (optionnel), Client Name (obligatoire) -->
+<div class="row mb-3">
+<div class="col-md-6">
+<label class="form-label">Client ID <span class="text-muted">(optionnel)</span></label>
+<input type="number" class="form-control" id="creditCustomerId"
+placeholder="ID du client" min="1">
+</div>
+<div class="col-md-6">
+<label class="form-label">Client Name <span class="text-danger">*</span></label>
+<div class="input-group">
+<select class="form-control" id="creditCustomer" required>
+<option value="">Sélectionner un client</option>
+<!-- Les options seront chargées dynamiquement -->
+</select>
+<button class="btn btn-outline-primary" type="button" id="addQuickCustomerCreditBtn" title="Ajouter un nouveau client">
+<i class="fas fa-user-plus"></i>
+</button>
+</div>
+</div>
+</div>
+
+<!-- Ligne 3 : Produit (optionnel) -->
+<div class="row mb-3">
+<div class="col-md-12">
+<label class="form-label">Produit <span class="text-muted">(optionnel)</span></label>
+<select class="form-control" id="creditProduct">
+<option value="">Sélectionner un produit (optionnel)</option>
+<!-- Les options seront chargées dynamiquement -->
+</select>
+</div>
+</div>
+
+<!-- Ligne 4 : Quantité, Prix vente, Prix revient, Profit unitaire -->
+<div class="row mb-3">
+<div class="col-md-3">
+<label class="form-label">Quantité</label>
+<input type="number" class="form-control" id="creditQuantity" value="1" min="1">
+</div>
+<div class="col-md-3">
+<label class="form-label">Prix vente (DH)</label>
+<input type="number" class="form-control" id="creditPriceSell" value="0" min="0" step="0.01">
+</div>
+<div class="col-md-3">
+<label class="form-label">Prix revient (DH)</label>
+<input type="number" class="form-control" id="creditPriceCost" value="0" min="0" step="0.01">
+</div>
+<div class="col-md-3">
+<label class="form-label">Profit unitaire (DH)</label>
+<input type="number" class="form-control" id="creditProfitUnit" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+</div>
+</div>
+
+<!-- Ligne 5 : Total produit, Profit total, Profit vente -->
+<div class="row mb-3">
+<div class="col-md-4">
+<label class="form-label">Total produit (DH)</label>
+<input type="number" class="form-control" id="creditTotalProduct" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+</div>
+<div class="col-md-4">
+<label class="form-label">Profit total (DH)</label>
+<input type="number" class="form-control" id="creditProfitTotal" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+</div>
+<div class="col-md-4">
+<label class="form-label">Profit vente (DH)</label>
+<input type="number" class="form-control" id="creditProfitSale" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+</div>
+</div>
+
+<!-- Ligne 6 : Montant total, Remise, Payé -->
+<div class="row mb-3">
+<div class="col-md-4">
+<label class="form-label">Montant total du crédit <span class="text-danger">*</span></label>
+<input type="number" class="form-control" id="creditAmount" value="0" min="0" step="0.01" required>
+</div>
+<div class="col-md-4">
+<label class="form-label">Remise (DH)</label>
+<input type="number" class="form-control" id="creditDiscount" value="0" min="0" step="0.01">
+<small class="text-muted">Sera déduite du total</small>
+</div>
+<div class="col-md-4">
+<label class="form-label">Payé (DH) <span class="text-muted">(optionnel)</span></label>
+<input type="number" class="form-control" id="creditPaid" value="0" min="0" step="0.01">
+</div>
+</div>
+
+<!-- Ligne 7 : Reste, Date échéance, Mode de paiement -->
+<div class="row mb-3">
+<div class="col-md-4">
+<label class="form-label">Reste à payer (DH)</label>
+<input type="number" class="form-control" id="creditRemaining" value="0" min="0" step="0.01" readonly style="background-color: var(--gray-100);">
+</div>
+<div class="col-md-4">
+<label class="form-label">Date d'échéance</label>
+<input type="date" class="form-control" id="creditDueDate" value="">
+</div>
+<div class="col-md-4">
+<label class="form-label">Mode de paiement</label>
+<select class="form-control" id="creditPaymentMethod">
+<option value="credit">Crédit</option>
+<option value="partial">Paiement partiel</option>
+<option value="cash">Espèces</option>
+</select>
+</div>
+</div>
+
+<!-- Ligne 8 : Description / Notes -->
+<div class="row mb-3">
+<div class="col-md-12">
+<label class="form-label">Description / Notes</label>
+<textarea class="form-control" id="creditDescription" rows="2" placeholder="Informations complémentaires (optionnel)"></textarea>
+</div>
+</div>
+
+<!-- Informations cachées pour les calculs -->
+<input type="hidden" id="creditSubtotal" value="0">
+</form>
+</div>
+<div class="modal-footer">
+<div class="text-muted small me-auto">
+<i class="fas fa-info-circle me-1"></i>
+Les champs marqués <span class="text-danger">*</span> sont obligatoires
+</div>
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+<button type="button" class="btn btn-primary" id="saveCreditBtn">
+<i class="fas fa-save me-2"></i>Enregistrer le crédit
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Quick Add Customer Modal for Credits -->
+<div class="modal fade" id="quickAddCustomerCreditModal" tabindex="-1">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Ajouter un client rapidement</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<form id="quickCustomerCreditForm">
+<div class="mb-3">
+<label class="form-label">Nom complet <span class="text-danger">*</span></label>
+<input type="text" class="form-control" id="quickCustomerCreditName" required>
+</div>
+<div class="mb-3">
+<label class="form-label">Téléphone</label>
+<input type="tel" class="form-control" id="quickCustomerCreditPhone">
+</div>
+<div class="mb-3">
+<label class="form-label">WhatsApp</label>
+<input type="tel" class="form-control" id="quickCustomerCreditWhatsapp">
+</div>
+</form>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+<button type="button" class="btn btn-primary" id="saveQuickCustomerCreditBtn">Enregistrer</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Modal Charges -->
+<div class="modal fade" id="chargesModal" tabindex="-1">
+<div class="modal-dialog modal-4xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-wallet"></i>
+</div>
+<div>
+<span class="d-block">Gestion des Charges</span>
+<small>Gérez vos dépenses et charges</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar -->
+<div class="toolbar mb-4">
+<button class="btn btn-primary" id="addChargeBtn">
+<i class="fas fa-plus-circle me-2"></i>Nouvelle Charge
+</button>
+<button class="btn btn-outline-primary" id="importChargesBtn">
+<i class="fas fa-file-import me-2"></i>Importer
+</button>
+<button class="btn btn-outline-primary" id="exportChargesBtn">
+<i class="fas fa-file-export me-2"></i>Exporter
+</button>
+<button class="btn btn-outline-primary" id="listChargesBtn">
+<i class="fas fa-list me-2"></i>Liste des charges
+</button>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Total Charges</h6>
+<h3 class="mb-0" id="totalCharges">0</h3>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Montant Total</h6>
+<h3 class="mb-0" id="totalChargesAmount">0 DH</h3>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card stat-card-sm">
+<div class="card-body">
+<h6 class="text-muted mb-1">Charges du mois</h6>
+<h3 class="mb-0 text-warning" id="monthlyCharges">0 DH</h3>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Add Form -->
+<div class="card add-form mb-4" id="chargeFormCard" style="display: none;">
+<div class="card-body">
+<h6>
+<i class="fas fa-plus-circle me-2"></i>
+Ajouter une charge
+</h6>
+<form id="chargeForm">
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Libellé <span class="text-danger">*</span>
+</label>
+<input type="text" class="form-control" id="chargeLabel"
+placeholder="Ex: Loyer, Électricité, etc." required>
+</div>
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Catégorie <span class="text-danger">*</span>
+</label>
+<select class="form-control" id="chargeCategory" required>
+<option value="">Sélectionner une catégorie</option>
+<option value="LOYER">Loyer</option>
+<option value="ÉLECTRICITÉ">Électricité</option>
+<option value="EAU">Eau</option>
+<option value="TÉLÉPHONE/INTERNET">Téléphone/Internet</option>
+<option value="SALAIRES">Salaires</option>
+<option value="TRANSPORT">Transport</option>
+<option value="FOURNITURES">Fournitures</option>
+<option value="ENTRETIEN">Entretien</option>
+<option value="ASSURANCE">Assurance</option>
+<option value="IMPÔTS">Impôts</option>
+<option value="PUBLICITÉ">Publicité</option>
+<option value="AUTRE">Autre</option>
+</select>
+</div>
+</div>
+<div class="row">
+<div class="col-md-4 mb-3">
+<label class="form-label">
+Montant (DH) <span class="text-danger">*</span>
+</label>
+<input type="number" class="form-control" id="chargeAmount"
+placeholder="0.00" value="0" min="0" step="0.01" required>
+</div>
+<div class="col-md-4 mb-3">
+<label class="form-label">
+Date <span class="text-danger">*</span>
+</label>
+<input type="date" class="form-control" id="chargeDate"
+value="" required>
+</div>
+<div class="col-md-4 mb-3">
+<label class="form-label">
+Mode de paiement
+</label>
+<select class="form-control" id="chargePaymentMethod">
+<option value="ESPÈCES">Espèces</option>
+<option value="CARTE BANCAIRE">Carte bancaire</option>
+<option value="CHÈQUE">Chèque</option>
+<option value="VIREMENT">Virement</option>
+<option value="AUTRE">Autre</option>
+</select>
+</div>
+</div>
+<div class="row">
+<div class="col-md-6 mb-3">
+<label class="form-label">
+Fournisseur/Bénéficiaire
+</label>
+<input type="text" class="form-control" id="chargeSupplier"
+placeholder="Nom du fournisseur ou bénéficiaire (optionnel)">
+</div>
+<div class="col-md-6 mb-3">
+<label class="form-label">
+N° Facture / Référence
+</label>
+<input type="text" class="form-control" id="chargeReference"
+placeholder="N° de facture ou référence (optionnel)">
+</div>
+</div>
+<div class="mb-3">
+<label class="form-label">
+Description / Notes
+</label>
+<textarea class="form-control" id="chargeDescription"
+rows="2" placeholder="Informations complémentaires (optionnel)"></textarea>
+</div>
+<div class="d-flex gap-2">
+<button type="submit" class="btn btn-primary">
+<i class="fas fa-save me-2"></i>Enregistrer
+</button>
+<button type="button" class="btn btn-outline-secondary" id="cancelChargeBtn">
+<i class="fas fa-times me-2"></i>Annuler
+</button>
+</div>
+</form>
+</div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+<div class="card-body">
+<div class="row g-3">
+<div class="col-md-4">
+<label class="form-label">Recherche</label>
+<input type="text" class="form-control" id="chargeSearch"
+placeholder="Libellé, catégorie, fournisseur...">
+</div>
+<div class="col-md-4">
+<label class="form-label">Période</label>
+<select class="form-control" id="chargeDateFilter">
+<option value="today">Aujourd'hui</option>
+<option value="yesterday">Hier</option>
+<option value="1day">1 jour</option>
+<option value="3days">3 jours</option>
+<option value="1week">1 semaine</option>
+<option value="15days">15 jours</option>
+<option value="1month">1 mois</option>
+<option value="3months">3 mois</option>
+<option value="6months">6 mois</option>
+<option value="1year">1 an</option>
+<option value="all">Toutes les dates</option>
+</select>
+</div>
+<div class="col-md-4 d-flex align-items-end">
+<button class="btn btn-primary w-100" id="applyChargeFilter">
+<i class="fas fa-filter me-2"></i>Filtrer
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Charges Table -->
+<div class="card">
+<div class="table-responsive">
+<table class="table" id="chargesTable">
+<thead>
+<tr>
+<th class="sortable" data-sort="id">ID <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="label">Libellé <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="category">Catégorie <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="amount">Montant <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="date">Date <i class="fas fa-sort ms-1"></i></th>
+<th class="sortable" data-sort="paymentMethod">Paiement <i class="fas fa-sort ms-1"></i></th>
+<th>Fournisseur</th>
+<th>Référence</th>
+<th>Description</th>
+<th class="text-center">Actions</th>
+</tr>
+</thead>
+<tbody id="chargesTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-muted small">
+<i class="fas fa-info-circle me-1"></i>
+Total: <span id="totalChargesCount">0</span> charges
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="loading-spinner" style="display: none;">
+<div class="spinner"></div>
+</div>
+<!-- Modal Statistics -->
+<div class="modal fade" id="statisticsModal" tabindex="-1" data-bs-backdrop="static">
+<div class="modal-dialog modal-4xl modal-dialog-centered">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">
+<div class="d-flex align-items-center">
+<div class="modal-icon me-3">
+<i class="fas fa-chart-pie"></i>
+</div>
+<div>
+<span class="d-block">Statistiques et Analyses</span>
+<small>Tableaux de bord interactifs</small>
+</div>
+</div>
+</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<!-- Toolbar avec filtre de période -->
+<div class="toolbar mb-4">
+<div class="row g-3 align-items-end w-100">
+<div class="col-md-4">
+<label class="form-label">Période d'analyse</label>
+<select class="form-control" id="statisticsPeriod">
+<option value="today">Aujourd'hui</option>
+<option value="1day">1 jour</option>
+<option value="3days">3 jours</option>
+<option value="1week">1 semaine</option>
+<option value="15days">15 jours</option>
+<option value="1month">1 mois</option>
+<option value="3months">3 mois</option>
+<option value="6months">6 mois</option>
+<option value="1year">1 an</option>
+<option value="all">Toutes les dates</option>
+</select>
+</div>
+<div class="col-md-2">
+<button class="btn btn-primary w-100" id="applyStatisticsFilter">
+<i class="fas fa-sync-alt me-2"></i>Actualiser
+</button>
+</div>
+<div class="col-md-2">
+<button class="btn btn-outline-primary w-100" id="exportStatisticsBtn">
+<i class="fas fa-file-export me-2"></i>Exporter PDF
+</button>
+</div>
+<div class="col-md-4 text-end">
+<span class="badge bg-light text-dark p-3" id="statisticsDateRange">
+<i class="far fa-calendar-alt me-2"></i>Chargement...
+</span>
+</div>
+</div>
+</div>
+
+<!-- KPI Cards Principaux -->
+<div class="row g-3 mb-4">
+<div class="col-md-3">
+<div class="card stat-card h-100">
+<div class="card-body">
+<div class="d-flex justify-content-between align-items-start mb-2">
+<div>
+<h6 class="text-muted mb-1">Chiffre d'affaires</h6>
+<h2 class="mb-0" id="statTotalRevenue">0 DH</h2>
+</div>
+<div class="stat-icon" style="background: #e8f5e9; color: #2e7d32;">
+<i class="fas fa-chart-line"></i>
+</div>
+</div>
+<div class="mt-2 small text-success" id="statRevenueTrend">
+<i class="fas fa-arrow-up me-1"></i>+0% vs période précédente
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="card stat-card h-100">
+<div class="card-body">
+<div class="d-flex justify-content-between align-items-start mb-2">
+<div>
+<h6 class="text-muted mb-1">Profit total</h6>
+<h2 class="mb-0" id="statTotalProfit">0 DH</h2>
+</div>
+<div class="stat-icon" style="background: #e3f2fd; color: #1565c0;">
+<i class="fas fa-coins"></i>
+</div>
+</div>
+<div class="mt-2 small" id="statProfitTrend">
+<i class="fas fa-minus me-1"></i>0% marge
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="card stat-card h-100">
+<div class="card-body">
+<div class="d-flex justify-content-between align-items-start mb-2">
+<div>
+<h6 class="text-muted mb-1">Articles vendus</h6>
+<h2 class="mb-0" id="statTotalItems">0</h2>
+</div>
+<div class="stat-icon" style="background: #fff3e0; color: #e65100;">
+<i class="fas fa-box-open"></i>
+</div>
+</div>
+<div class="mt-2 small text-info" id="statItemsAvg">
+<i class="fas fa-calculator me-1"></i>Moy: 0/jour
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="card stat-card h-100">
+<div class="card-body">
+<div class="d-flex justify-content-between align-items-start mb-2">
+<div>
+<h6 class="text-muted mb-1">Crédits en cours</h6>
+<h2 class="mb-0" id="statActiveCredits">0 DH</h2>
+</div>
+<div class="stat-icon" style="background: #fce4e4; color: #c62828;">
+<i class="fas fa-hand-holding-usd"></i>
+</div>
+</div>
+<div class="mt-2 small text-warning" id="statCreditCount">
+<i class="fas fa-exclamation-triangle me-1"></i>0 crédits actifs
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Graphiques Row 1 -->
+<!-- Graphiques Row 1 - Chronologie à 90% et Circulaire à 10% -->
+<div class="row g-4 mb-4">
+<div class="col-md-10"> <!-- 90% de largeur à gauche -->
+<div class="card">
+<div class="card-header d-flex justify-content-between align-items-center">
+<h5 class="mb-0">Évolution des ventes et crédits</h5>
+<div class="btn-group btn-group-sm" id="chartScaleToggle">
+<button class="btn btn-outline-secondary active" data-scale="day">Jour</button>
+<button class="btn btn-outline-secondary" data-scale="week">Semaine</button>
+<button class="btn btn-outline-secondary" data-scale="month">Mois</button>
+</div>
+</div>
+<div class="card-body">
+<canvas id="salesCreditChart" style="height: 350px; width: 100%;"></canvas>
+</div>
+</div>
+</div>
+<div class="col-md-2"> <!-- 10% de largeur à droite -->
+<div class="card h-100">
+<div class="card-header text-center">
+<h5 class="mb-0">Ventes</h5>
+</div>
+<div class="card-body d-flex align-items-center justify-content-center p-2">
+<canvas id="paymentMethodChart" style="height: 200px; width: 100%; max-width: 200px;"></canvas>
+</div>
+<div class="card-footer bg-transparent border-0 text-center small">
+<div class="d-flex justify-content-center gap-3">
+<span class="d-inline-flex align-items-center">
+<span class="badge me-1" style="background: #000000; width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
+Espèces
+</span>
+<span class="d-inline-flex align-items-center">
+<span class="badge me-1" style="background: #2ecc71; width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
+Crédit
+</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Graphiques Row 2 -->
+<div class="row g-4 mb-4">
+<div class="col-md-6">
+<div class="card">
+<div class="card-header">
+<h5 class="mb-0">Top 5 clients</h5>
+</div>
+<div class="card-body">
+<div class="table-responsive">
+<table class="table table-sm" id="topCustomersTable">
+<thead>
+<tr>
+<th>Client</th>
+<th class="text-end">CA</th>
+<th class="text-end">Profit</th>
+<th class="text-center">Achats</th>
+</tr>
+</thead>
+<tbody id="topCustomersBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-6">
+<div class="card">
+<div class="card-header">
+<h5 class="mb-0">Top 5 produits</h5>
+</div>
+<div class="card-body">
+<div class="table-responsive">
+<table class="table table-sm" id="topProductsTable">
+<thead>
+<tr>
+<th>Produit</th>
+<th class="text-end">Quantité</th>
+<th class="text-end">CA</th>
+<th class="text-end">Profit</th>
+</tr>
+</thead>
+<tbody id="topProductsBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Statistiques détaillées -->
+<div class="row g-4">
+<div class="col-md-4">
+<div class="card">
+<div class="card-header">
+<h5 class="mb-0">Résumé des ventes</h5>
+</div>
+<div class="card-body">
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Nombre de ventes:</span>
+<span class="fw-bold" id="statSalesCount">0</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Ticket moyen:</span>
+<span class="fw-bold" id="statAvgTicket">0 DH</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Ventes comptant:</span>
+<span class="fw-bold" id="statCashSales">0 DH</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Ventes à crédit:</span>
+<span class="fw-bold" id="statCreditSales">0 DH</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Remises accordées:</span>
+<span class="fw-bold text-danger" id="statTotalDiscount">0 DH</span>
+</div>
+<hr>
+<div class="d-flex justify-content-between">
+<span class="text-muted">Marge brute:</span>
+<span class="fw-bold text-success" id="statMargin">0%</span>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card">
+<div class="card-header">
+<h5 class="mb-0">Crédits</h5>
+</div>
+<div class="card-body">
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Crédits impayés:</span>
+<span class="fw-bold" id="statUnpaidCredits">0</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Montant total dû:</span>
+<span class="fw-bold" id="statTotalDue">0 DH</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Crédits en retard:</span>
+<span class="fw-bold text-danger" id="statOverdueCredits">0</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Montant en retard:</span>
+<span class="fw-bold text-danger" id="statOverdueAmount">0 DH</span>
+</div>
+<hr>
+<div class="d-flex justify-content-between">
+<span class="text-muted">Taux de recouvrement:</span>
+<span class="fw-bold text-success" id="statRecoveryRate">0%</span>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-4">
+<div class="card">
+<div class="card-header">
+<h5 class="mb-0">Clients</h5>
+</div>
+<div class="card-body">
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Clients actifs:</span>
+<span class="fw-bold" id="statActiveCustomers">0</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Nouveaux clients:</span>
+<span class="fw-bold" id="statNewCustomers">0</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">CA moyen/client:</span>
+<span class="fw-bold" id="statAvgCustomerRevenue">0 DH</span>
+</div>
+<div class="d-flex justify-content-between mb-2">
+<span class="text-muted">Profit moyen/client:</span>
+<span class="fw-bold" id="statAvgCustomerProfit">0 DH</span>
+</div>
+<hr>
+<div class="d-flex justify-content-between">
+<span class="text-muted">Taux de fidélité:</span>
+<span class="fw-bold" id="statLoyaltyRate">0%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<div class="text-muted small">
+<i class="fas fa-info-circle me-1"></i>
+Dernière mise à jour: <span id="statLastUpdate">-</span>
+</div>
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="db.js"></script>
+<script src="main.js"></script>
+
+<script>
+// Enregistrement du Service Worker amélioré pour iOS
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', () => {
+navigator.serviceWorker.register('service-worker.js')
+.then(registration => {
+console.log('✅ Service Worker enregistré:', registration);
+
+// Vérifier si le SW est actif
+if (registration.active) {
+console.log('✅ Service Worker actif');
 }
 
-// ==================== CATEGORY MANAGER ====================
-class CategoryManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.categories = [];
-        this.initEventListeners();
-        this.loadCategoriesFromDB();
-    }
-
-    async loadCategoriesFromDB() {
-        try {
-            this.categories = await this.db.getCategoriesWithStats();
-            this.renderCategoriesTable();
-            console.log('✅ Catégories chargées depuis IndexedDB:', this.categories.length);
-        } catch (error) {
-            console.error('❌ Erreur chargement catégories:', error);
-            this.categories = [];
-        }
-    }
-
-    initEventListeners() {
-        const addBtn = document.getElementById('addCategoryBtn');
-        const cancelBtn = document.getElementById('cancelCategoryBtn');
-        const form = document.getElementById('categoryForm');
-        const importBtn = document.getElementById('importCategoriesBtn');
-        const exportBtn = document.getElementById('exportCategoriesBtn');
-        const listBtn = document.getElementById('listCategoriesBtn');
-        
-        if (addBtn) addBtn.addEventListener('click', () => this.showAddForm());
-        if (cancelBtn) cancelBtn.addEventListener('click', () => this.hideAddForm());
-        if (form) form.addEventListener('submit', (e) => this.handleAddCategory(e));
-        if (importBtn) importBtn.addEventListener('click', () => this.importCategories());
-        if (exportBtn) exportBtn.addEventListener('click', () => this.exportCategories());
-        if (listBtn) listBtn.addEventListener('click', () => this.showCategoriesList());
-    }
-
-    showAddForm() {
-        const formCard = document.getElementById('categoryFormCard');
-        const nameInput = document.getElementById('categoryName');
-        
-        if (formCard) {
-            formCard.style.display = 'block';
-            if (nameInput) nameInput.focus();
-        }
-    }
-
-    hideAddForm() {
-        const formCard = document.getElementById('categoryFormCard');
-        const form = document.getElementById('categoryForm');
-        
-        if (formCard) formCard.style.display = 'none';
-        if (form) form.reset();
-        
-        const categoryForm = document.getElementById('categoryForm');
-        if (categoryForm) {
-            categoryForm.onsubmit = (e) => this.handleAddCategory(e);
-        }
-    }
-
-    async handleAddCategory(e) {
-        e.preventDefault();
-        
-        const categoryNameInput = document.getElementById('categoryName');
-        if (!categoryNameInput) return;
-        
-        let categoryName = categoryNameInput.value.trim();
-        
-        if (!categoryName) {
-            this.showNotification('Veuillez entrer un nom de catégorie', 'warning');
-            return;
-        }
-
-        categoryName = categoryName.toUpperCase();
-
-        try {
-            const existingCategory = await this.db.getCategoryByName(categoryName);
-            if (existingCategory) {
-                this.showNotification('Cette catégorie existe déjà', 'warning');
-                return;
-            }
-
-            const newCategory = {
-                name: categoryName,
-                description: '',
-                icon: 'folder',
-                nbProducts: 0,
-                revenue: 0,
-                profit: 0,
-                created_at: new Date()
-            };
-
-            await this.db.add('categories', newCategory);
-            await this.loadCategoriesFromDB();
-            
-            this.hideAddForm();
-            this.showNotification(`✅ Catégorie "${categoryName}" ajoutée avec succès`, 'success');
-        } catch (error) {
-            console.error('Erreur ajout catégorie:', error);
-            this.showNotification('❌ Erreur lors de l\'ajout de la catégorie', 'error');
-        }
-    }
-
-    renderCategoriesTable() {
-        const tbody = document.getElementById('categoriesTableBody');
-        const totalSpan = document.getElementById('totalCategories');
-        
-        if (!tbody) return;
-        
-        if (!this.categories || this.categories.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">Aucune catégorie trouvée</td></tr>`;
-        } else {
-            tbody.innerHTML = this.categories.map(cat => `
-                <tr>
-                    <td class="px-4 py-3">
-                        <span class="badge bg-light text-dark">#${cat.id}</span>
-                    </td>
-                    <td class="px-4 py-3">${cat.name}</td>
-                    <td class="px-4 py-3 text-center">
-                        <span class="badge bg-light text-dark">${cat.nbProducts || 0}</span>
-                    </td>
-                    <td class="px-4 py-3 text-end">${(cat.revenue || 0).toLocaleString()} DH</td>
-                    <td class="px-4 py-3 text-end text-success">${(cat.profit || 0).toLocaleString()} DH</td>
-                    <td class="px-4 py-3">
-                        <i class="far fa-calendar-alt me-1"></i>${cat.createdAt || new Date(cat.created_at).toISOString().split('T')[0]}
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                        <button class="btn-action btn-edit me-1" onclick="window.categoryManager.editCategory(${cat.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-action btn-delete" onclick="window.categoryManager.deleteCategory(${cat.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        if (totalSpan) {
-            totalSpan.textContent = this.categories?.length || 0;
-        }
-    }
-
-    async editCategory(id) {
-        const category = this.categories.find(c => c.id === id);
-        if (category) {
-            const nameInput = document.getElementById('categoryName');
-            if (nameInput) {
-                nameInput.value = category.name;
-            }
-            this.showAddForm();
-            
-            const form = document.getElementById('categoryForm');
-            if (form) {
-                form.onsubmit = (e) => {
-                    e.preventDefault();
-                    this.updateCategory(id);
-                };
-            }
-        }
-    }
-
-    async updateCategory(id) {
-        const nameInput = document.getElementById('categoryName');
-        if (!nameInput) return;
-        
-        let newName = nameInput.value.trim();
-        if (!newName) {
-            this.showNotification('Veuillez entrer un nom de catégorie', 'warning');
-            return;
-        }
-
-        newName = newName.toUpperCase();
-
-        try {
-            const category = this.categories.find(c => c.id === id);
-            if (category) {
-                category.name = newName;
-                await this.db.update('categories', category);
-                await this.loadCategoriesFromDB();
-                
-                this.hideAddForm();
-                this.showNotification('✅ Catégorie modifiée avec succès', 'success');
-            }
-        } catch (error) {
-            console.error('Erreur modification catégorie:', error);
-            this.showNotification('❌ Erreur lors de la modification', 'error');
-        }
-    }
-
-    async deleteCategory(id) {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette catégorie ?')) {
-            try {
-                await this.db.delete('categories', id);
-                await this.loadCategoriesFromDB();
-                this.showNotification('✅ Catégorie supprimée avec succès', 'success');
-            } catch (error) {
-                console.error('Erreur suppression catégorie:', error);
-                this.showNotification('❌ Erreur lors de la suppression', 'error');
-            }
-        }
-    }
-
-    async importCategories() {
-        try {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.json';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.name.endsWith('.json')) {
-                    this.showNotification('❌ Le fichier doit être au format JSON', 'error');
-                    return;
-                }
-
-                const reader = new FileReader();
-                
-                reader.onload = async (event) => {
-                    try {
-                        const jsonData = JSON.parse(event.target.result);
-                        
-                        if (!Array.isArray(jsonData)) {
-                            throw new Error('Le fichier doit contenir un tableau de catégories');
-                        }
-                        
-                        let importedCount = 0;
-                        let skippedCount = 0;
-                        
-                        for (const cat of jsonData) {
-                            try {
-                                if (!cat.name) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                
-                                cat.name = cat.name.toUpperCase();
-                                const existing = await this.db.getCategoryByName(cat.name);
-                                
-                                if (!existing) {
-                                    const newCategory = {
-                                        name: cat.name,
-                                        description: cat.description || '',
-                                        icon: cat.icon || 'folder',
-                                        nbProducts: cat.nbProducts || 0,
-                                        revenue: cat.revenue || 0,
-                                        profit: cat.profit || 0,
-                                        created_at: cat.created_at ? new Date(cat.created_at) : new Date()
-                                    };
-                                    
-                                    await this.db.add('categories', newCategory);
-                                    importedCount++;
-                                } else {
-                                    skippedCount++;
-                                }
-                            } catch (catError) {
-                                console.error('Erreur import catégorie:', catError);
-                                skippedCount++;
-                            }
-                        }
-                        
-                        await this.loadCategoriesFromDB();
-                        this.showNotification(`✅ Import terminé : ${importedCount} importée(s), ${skippedCount} ignorée(s)`, 'success');
-                        
-                    } catch (error) {
-                        this.showNotification('❌ Fichier JSON invalide', 'error');
-                    }
-                };
-                
-                reader.readAsText(file);
-            };
-            
-            document.body.appendChild(fileInput);
-            fileInput.click();
-            setTimeout(() => document.body.removeChild(fileInput), 1000);
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'import', 'error');
-        }
-    }
-
-    async exportCategories() {
-        try {
-            const categories = await this.db.getCategoriesWithStats();
-            
-            if (categories.length === 0) {
-                this.showNotification('❌ Aucune catégorie à exporter', 'warning');
-                return;
-            }
-            
-            const exportData = categories.map(cat => ({
-                id: cat.id,
-                name: cat.name,
-                description: cat.description || '',
-                icon: cat.icon || 'folder',
-                nbProducts: cat.nbProducts || 0,
-                revenue: cat.revenue || 0,
-                profit: cat.profit || 0,
-                created_at: cat.created_at || new Date().toISOString()
-            }));
-
-            const jsonContent = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `categories_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
-            this.showNotification(`✅ Export réussi ! ${categories.length} catégorie(s) exportée(s)`, 'success');
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    showCategoriesList() {
-        this.loadCategoriesFromDB();
-        this.showNotification('📋 Liste des catégories actualisée', 'info');
-    }
-
-    showNotification(message, type = 'info') {
-        if (window.app) {
-            window.app.showNotification(message, type);
-        }
-    }
+// Gérer les mises à jour
+registration.addEventListener('updatefound', () => {
+const newWorker = registration.installing;
+console.log('🔄 Nouveau SW trouvé');
+newWorker.addEventListener('statechange', () => {
+if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+console.log('🔄 Nouvelle version, rechargement...');
+window.location.reload();
 }
-
-// ==================== SUPPLIER MANAGER ====================
-class SupplierManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.suppliers = [];
-        this.editingSupplierId = null;
-        this.initEventListeners();
-        this.loadSuppliersFromDB();
-    }
-
-    async loadSuppliersFromDB() {
-        try {
-            this.suppliers = await this.db.getAll('suppliers');
-            this.renderSuppliersTable();
-            console.log('✅ Fournisseurs chargés depuis IndexedDB:', this.suppliers.length);
-        } catch (error) {
-            console.error('❌ Erreur chargement fournisseurs:', error);
-            this.suppliers = [];
-        }
-    }
-
-    initEventListeners() {
-        const addBtn = document.getElementById('addSupplierBtn');
-        const cancelBtn = document.getElementById('cancelSupplierBtn');
-        const form = document.getElementById('supplierForm');
-        const importBtn = document.getElementById('importSuppliersBtn');
-        const exportBtn = document.getElementById('exportSuppliersBtn');
-        const listBtn = document.getElementById('listSuppliersBtn');
-        
-        if (addBtn) addBtn.addEventListener('click', () => this.showAddForm());
-        if (cancelBtn) cancelBtn.addEventListener('click', () => this.hideAddForm());
-        if (form) form.addEventListener('submit', (e) => this.handleSupplierSubmit(e));
-        if (importBtn) importBtn.addEventListener('click', () => this.importSuppliers());
-        if (exportBtn) exportBtn.addEventListener('click', () => this.exportSuppliers());
-        if (listBtn) listBtn.addEventListener('click', () => this.showSuppliersList());
-
-        const suppliersModal = document.getElementById('suppliersModal');
-        if (suppliersModal) {
-            suppliersModal.addEventListener('hidden.bs.modal', () => {
-                this.editingSupplierId = null;
-            });
-        }
-    }
-
-    async handleSupplierSubmit(e) {
-        e.preventDefault();
-        
-        if (this.editingSupplierId) {
-            await this.updateSupplier(this.editingSupplierId);
-        } else {
-            await this.handleAddSupplier(e);
-        }
-    }
-
-    showAddForm() {
-        const formCard = document.getElementById('supplierFormCard');
-        const nameInput = document.getElementById('supplierContactName');
-        
-        if (formCard) {
-            formCard.style.display = 'block';
-            if (nameInput) nameInput.focus();
-        }
-    }
-
-    hideAddForm() {
-        const formCard = document.getElementById('supplierFormCard');
-        const form = document.getElementById('supplierForm');
-        
-        if (formCard) formCard.style.display = 'none';
-        if (form) form.reset();
-        this.editingSupplierId = null;
-    }
-
-    async handleAddSupplier(e) {
-        e.preventDefault();
-        
-        const contactName = document.getElementById('supplierContactName')?.value.trim();
-        
-        if (!contactName) {
-            this.showNotification('Veuillez entrer le nom du contact', 'warning');
-            return;
-        }
-
-        const company = document.getElementById('supplierCompany')?.value.trim() || '';
-        const phone = document.getElementById('supplierPhone')?.value.trim() || '';
-        const whatsapp = document.getElementById('supplierWhatsapp')?.value.trim() || '';
-        const address = document.getElementById('supplierAddress')?.value.trim() || '';
-        const email = document.getElementById('supplierEmail')?.value.trim() || '';
-        const revenue = document.getElementById('supplierRevenue')?.value || 0;
-
-        try {
-            const newSupplier = {
-                contact_name: contactName.toUpperCase(),
-                company: company.toUpperCase(),
-                phone: phone,
-                whatsapp: whatsapp,
-                address: address,
-                email: email,
-                revenue: parseFloat(revenue),
-                created_at: new Date()
-            };
-
-            await this.db.add('suppliers', newSupplier);
-            await this.loadSuppliersFromDB();
-            
-            this.hideAddForm();
-            this.showNotification(`✅ Fournisseur "${contactName}" ajouté avec succès`, 'success');
-        } catch (error) {
-            console.error('Erreur ajout fournisseur:', error);
-            this.showNotification('❌ Erreur lors de l\'ajout du fournisseur', 'error');
-        }
-    }
-
-    renderSuppliersTable() {
-        const tbody = document.getElementById('suppliersTableBody');
-        const totalSpan = document.getElementById('totalSuppliers');
-        
-        if (!tbody) return;
-        
-        if (!this.suppliers || this.suppliers.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">Aucun fournisseur trouvé</td></tr>`;
-        } else {
-            tbody.innerHTML = this.suppliers.map(sup => `
-                <tr>
-                    <td class="px-4 py-3">
-                        <span class="badge bg-light text-dark">#${sup.id}</span>
-                    </td>
-                    <td class="px-4 py-3">${sup.contact_name}</td>
-                    <td class="px-4 py-3">${sup.company || '-'}</td>
-                    <td class="px-4 py-3">${sup.phone || '-'}</td>
-                    <td class="px-4 py-3">
-                        ${sup.whatsapp ? 
-                            `<a href="https://wa.me/${sup.whatsapp.replace(/\s/g, '')}" target="_blank" class="text-success">
-                                <i class="fab fa-whatsapp"></i> ${sup.whatsapp}
-                            </a>` : 
-                            '<span class="text-muted">-</span>'
-                        }
-                    </td>
-                    <td class="px-4 py-3">${sup.address || '-'}</td>
-                    <td class="px-4 py-3 text-end">${sup.revenue?.toLocaleString() || 0} DH</td>
-                    <td class="px-4 py-3 text-center">
-                        <button class="btn-action btn-edit me-1" onclick="window.supplierManager.editSupplier(${sup.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-action btn-delete" onclick="window.supplierManager.deleteSupplier(${sup.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        if (totalSpan) {
-            totalSpan.textContent = this.suppliers?.length || 0;
-        }
-    }
-
-    async editSupplier(id) {
-        const supplier = this.suppliers.find(s => s.id === id);
-        if (supplier) {
-            this.editingSupplierId = id;
-            
-            document.getElementById('supplierContactName').value = supplier.contact_name;
-            document.getElementById('supplierCompany').value = supplier.company || '';
-            document.getElementById('supplierPhone').value = supplier.phone || '';
-            document.getElementById('supplierWhatsapp').value = supplier.whatsapp || '';
-            document.getElementById('supplierAddress').value = supplier.address || '';
-            document.getElementById('supplierEmail').value = supplier.email || '';
-            document.getElementById('supplierRevenue').value = supplier.revenue || 0;
-            
-            this.showAddForm();
-        }
-    }
-
-    async updateSupplier(id) {
-        const contactName = document.getElementById('supplierContactName')?.value.trim();
-        
-        if (!contactName) {
-            this.showNotification('Veuillez entrer le nom du contact', 'warning');
-            return;
-        }
-
-        const company = document.getElementById('supplierCompany')?.value.trim() || '';
-        const phone = document.getElementById('supplierPhone')?.value.trim() || '';
-        const whatsapp = document.getElementById('supplierWhatsapp')?.value.trim() || '';
-        const address = document.getElementById('supplierAddress')?.value.trim() || '';
-        const email = document.getElementById('supplierEmail')?.value.trim() || '';
-        const revenue = document.getElementById('supplierRevenue')?.value || 0;
-
-        try {
-            const supplier = await this.db.getById('suppliers', id);
-            
-            if (supplier) {
-                supplier.contact_name = contactName.toUpperCase();
-                supplier.company = company.toUpperCase();
-                supplier.phone = phone;
-                supplier.whatsapp = whatsapp;
-                supplier.address = address;
-                supplier.email = email;
-                supplier.revenue = parseFloat(revenue);
-                
-                await this.db.update('suppliers', supplier);
-                await this.loadSuppliersFromDB();
-                
-                this.hideAddForm();
-                this.showNotification('✅ Fournisseur modifié avec succès', 'success');
-            } else {
-                this.showNotification('❌ Fournisseur non trouvé', 'error');
-            }
-        } catch (error) {
-            console.error('Erreur modification fournisseur:', error);
-            this.showNotification('❌ Erreur lors de la modification', 'error');
-        }
-    }
-
-    async deleteSupplier(id) {
-        if (confirm('Êtes-vous sûr de vouloir supprimer ce fournisseur ?')) {
-            try {
-                await this.db.delete('suppliers', id);
-                await this.loadSuppliersFromDB();
-                this.showNotification('✅ Fournisseur supprimé avec succès', 'success');
-            } catch (error) {
-                console.error('Erreur suppression fournisseur:', error);
-                this.showNotification('❌ Erreur lors de la suppression', 'error');
-            }
-        }
-    }
-
-    async importSuppliers() {
-        try {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.json';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.name.endsWith('.json')) {
-                    this.showNotification('❌ Le fichier doit être au format JSON', 'error');
-                    return;
-                }
-
-                const reader = new FileReader();
-                
-                reader.onload = async (event) => {
-                    try {
-                        const jsonData = JSON.parse(event.target.result);
-                        
-                        if (!Array.isArray(jsonData)) {
-                            throw new Error('Le fichier doit contenir un tableau de fournisseurs');
-                        }
-                        
-                        let importedCount = 0;
-                        let skippedCount = 0;
-                        
-                        for (const sup of jsonData) {
-                            try {
-                                if (!sup.contact_name) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                
-                                const newSupplier = {
-                                    contact_name: sup.contact_name.toUpperCase(),
-                                    company: sup.company?.toUpperCase() || '',
-                                    phone: sup.phone || '',
-                                    whatsapp: sup.whatsapp || '',
-                                    address: sup.address || '',
-                                    email: sup.email || '',
-                                    revenue: sup.revenue || 0,
-                                    created_at: sup.created_at ? new Date(sup.created_at) : new Date()
-                                };
-                                
-                                await this.db.add('suppliers', newSupplier);
-                                importedCount++;
-                            } catch (supError) {
-                                console.error('Erreur import fournisseur:', supError);
-                                skippedCount++;
-                            }
-                        }
-                        
-                        await this.loadSuppliersFromDB();
-                        this.showNotification(`✅ Import terminé : ${importedCount} importé(s), ${skippedCount} ignoré(s)`, 'success');
-                        
-                    } catch (error) {
-                        this.showNotification('❌ Fichier JSON invalide', 'error');
-                    }
-                };
-                
-                reader.readAsText(file);
-            };
-            
-            document.body.appendChild(fileInput);
-            fileInput.click();
-            setTimeout(() => document.body.removeChild(fileInput), 1000);
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'import', 'error');
-        }
-    }
-
-    async exportSuppliers() {
-        try {
-            const suppliers = await this.db.getAll('suppliers');
-            
-            if (suppliers.length === 0) {
-                this.showNotification('❌ Aucun fournisseur à exporter', 'warning');
-                return;
-            }
-            
-            const exportData = suppliers.map(sup => ({
-                id: sup.id,
-                contact_name: sup.contact_name,
-                company: sup.company || '',
-                phone: sup.phone || '',
-                whatsapp: sup.whatsapp || '',
-                address: sup.address || '',
-                email: sup.email || '',
-                revenue: sup.revenue || 0,
-                created_at: sup.created_at || new Date().toISOString()
-            }));
-
-            const jsonContent = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `fournisseurs_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
-            this.showNotification(`✅ Export réussi ! ${suppliers.length} fournisseur(s) exporté(s)`, 'success');
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    showSuppliersList() {
-        this.loadSuppliersFromDB();
-        this.showNotification('📋 Liste des fournisseurs actualisée', 'info');
-    }
-
-    showNotification(message, type = 'info') {
-        if (window.app) {
-            window.app.showNotification(message, type);
-        }
-    }
-}
-
-// ==================== CUSTOMER MANAGER ====================
-class CustomerManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.customers = [];
-        this.editingCustomerId = null;
-        this.initEventListeners();
-        this.loadCustomersFromDB();
-    }
-
-    async loadCustomersFromDB() {
-        try {
-            this.customers = await this.db.getAll('customers');
-            this.renderCustomersTable();
-            console.log('✅ Clients chargés depuis IndexedDB:', this.customers.length);
-        } catch (error) {
-            console.error('❌ Erreur chargement clients:', error);
-            this.customers = [];
-        }
-    }
-
-    initEventListeners() {
-        const addBtn = document.getElementById('addCustomerBtn');
-        const cancelBtn = document.getElementById('cancelCustomerBtn');
-        const form = document.getElementById('customerForm');
-        const importBtn = document.getElementById('importCustomersBtn');
-        const exportBtn = document.getElementById('exportCustomersBtn');
-        const listBtn = document.getElementById('listCustomersBtn');
-        
-        if (addBtn) addBtn.addEventListener('click', () => this.showAddForm());
-        if (cancelBtn) cancelBtn.addEventListener('click', () => this.hideAddForm());
-        if (form) form.addEventListener('submit', (e) => this.handleCustomerSubmit(e));
-        if (importBtn) importBtn.addEventListener('click', () => this.importCustomers());
-        if (exportBtn) exportBtn.addEventListener('click', () => this.exportCustomers());
-        if (listBtn) listBtn.addEventListener('click', () => this.showCustomersList());
-
-        const customersModal = document.getElementById('customersModal');
-        if (customersModal) {
-            customersModal.addEventListener('hidden.bs.modal', () => {
-                this.editingCustomerId = null;
-            });
-        }
-    }
-
-    async handleCustomerSubmit(e) {
-        e.preventDefault();
-        
-        if (this.editingCustomerId) {
-            await this.updateCustomer(this.editingCustomerId);
-        } else {
-            await this.handleAddCustomer(e);
-        }
-    }
-
-    showAddForm() {
-        const formCard = document.getElementById('customerFormCard');
-        const nameInput = document.getElementById('customerName');
-        
-        if (formCard) {
-            formCard.style.display = 'block';
-            if (nameInput) nameInput.focus();
-        }
-    }
-
-    hideAddForm() {
-        const formCard = document.getElementById('customerFormCard');
-        const form = document.getElementById('customerForm');
-        
-        if (formCard) formCard.style.display = 'none';
-        if (form) form.reset();
-        this.editingCustomerId = null;
-    }
-
-    async handleAddCustomer(e) {
-        e.preventDefault();
-        
-        const customerName = document.getElementById('customerName')?.value.trim();
-        
-        if (!customerName) {
-            this.showNotification('Veuillez entrer le nom du client', 'warning');
-            return;
-        }
-
-        const gender = document.getElementById('customerGender')?.value || '';
-        const phone = document.getElementById('customerPhone')?.value.trim() || '';
-        const whatsapp = document.getElementById('customerWhatsapp')?.value.trim() || '';
-        const address = document.getElementById('customerAddress')?.value.trim() || '';
-        const revenue = document.getElementById('customerRevenue')?.value || 0;
-        const profit = document.getElementById('customerProfit')?.value || 0;
-        const credit = document.getElementById('customerCredit')?.value || 0;
-        const description = document.getElementById('customerDescription')?.value.trim() || '';
-
-        try {
-            const newCustomer = {
-                name: customerName.toUpperCase(),
-                gender: gender,
-                phone: phone,
-                whatsapp: whatsapp,
-                address: address,
-                revenue: parseFloat(revenue),
-                profit: parseFloat(profit),
-                credit: parseFloat(credit),
-                description: description,
-                created_at: new Date()
-            };
-
-            await this.db.add('customers', newCustomer);
-            await this.loadCustomersFromDB();
-            
-            this.hideAddForm();
-            this.showNotification(`✅ Client "${customerName}" ajouté avec succès`, 'success');
-        } catch (error) {
-            console.error('Erreur ajout client:', error);
-            this.showNotification('❌ Erreur lors de l\'ajout du client', 'error');
-        }
-    }
-
-    renderCustomersTable() {
-        const tbody = document.getElementById('customersTableBody');
-        const totalSpan = document.getElementById('totalCustomers');
-        
-        if (!tbody) return;
-        
-        if (!this.customers || this.customers.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-muted">Aucun client trouvé</td></tr>`;
-        } else {
-            tbody.innerHTML = this.customers.map(cust => `
-                <tr>
-                    <td class="px-4 py-3">
-                        <span class="badge bg-light text-dark">#${cust.id}</span>
-                    </td>
-                    <td class="px-4 py-3">${cust.name}</td>
-                    <td class="px-4 py-3">
-                        ${cust.gender === 'MASCULIN' ? '<i class="fas fa-mars text-primary"></i> M' : 
-                          cust.gender === 'FÉMININ' ? '<i class="fas fa-venus text-danger"></i> F' : '-'}
-                    </td>
-                    <td class="px-4 py-3">${cust.address || '-'}</td>
-                    <td class="px-4 py-3">${cust.phone || '-'}</td>
-                    <td class="px-4 py-3">
-                        ${cust.whatsapp ? 
-                            `<a href="https://wa.me/${cust.whatsapp.replace(/\s/g, '')}" target="_blank" class="text-success">
-                                <i class="fab fa-whatsapp"></i>
-                            </a>` : 
-                            '-'
-                        }
-                    </td>
-                    <td class="px-4 py-3 text-end">${cust.revenue?.toLocaleString() || 0} DH</td>
-                    <td class="px-4 py-3 text-end text-success">${cust.profit?.toLocaleString() || 0} DH</td>
-                    <td class="px-4 py-3 text-end ${cust.credit > 0 ? 'text-warning' : ''}">${cust.credit?.toLocaleString() || 0} DH</td>
-                    <td class="px-4 py-3">${cust.description?.substring(0, 30) || '-'}${cust.description?.length > 30 ? '...' : ''}</td>
-                    <td class="px-4 py-3">${new Date(cust.created_at).toLocaleDateString()}</td>
-                    <td class="px-4 py-3 text-center">
-                        <button class="btn-action btn-edit me-1" onclick="window.customerManager.editCustomer(${cust.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-action btn-delete" onclick="window.customerManager.deleteCustomer(${cust.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        if (totalSpan) {
-            totalSpan.textContent = this.customers?.length || 0;
-        }
-    }
-
-    async editCustomer(id) {
-        const customer = this.customers.find(c => c.id === id);
-        if (customer) {
-            this.editingCustomerId = id;
-            
-            document.getElementById('customerName').value = customer.name;
-            document.getElementById('customerGender').value = customer.gender || '';
-            document.getElementById('customerPhone').value = customer.phone || '';
-            document.getElementById('customerWhatsapp').value = customer.whatsapp || '';
-            document.getElementById('customerAddress').value = customer.address || '';
-            document.getElementById('customerRevenue').value = customer.revenue || 0;
-            document.getElementById('customerProfit').value = customer.profit || 0;
-            document.getElementById('customerCredit').value = customer.credit || 0;
-            document.getElementById('customerDescription').value = customer.description || '';
-            
-            this.showAddForm();
-        }
-    }
-
-    async updateCustomer(id) {
-        const customerName = document.getElementById('customerName')?.value.trim();
-        
-        if (!customerName) {
-            this.showNotification('Veuillez entrer le nom du client', 'warning');
-            return;
-        }
-
-        const gender = document.getElementById('customerGender')?.value || '';
-        const phone = document.getElementById('customerPhone')?.value.trim() || '';
-        const whatsapp = document.getElementById('customerWhatsapp')?.value.trim() || '';
-        const address = document.getElementById('customerAddress')?.value.trim() || '';
-        const revenue = document.getElementById('customerRevenue')?.value || 0;
-        const profit = document.getElementById('customerProfit')?.value || 0;
-        const credit = document.getElementById('customerCredit')?.value || 0;
-        const description = document.getElementById('customerDescription')?.value.trim() || '';
-
-        try {
-            const customer = await this.db.getById('customers', id);
-            
-            if (customer) {
-                customer.name = customerName.toUpperCase();
-                customer.gender = gender;
-                customer.phone = phone;
-                customer.whatsapp = whatsapp;
-                customer.address = address;
-                customer.revenue = parseFloat(revenue);
-                customer.profit = parseFloat(profit);
-                customer.credit = parseFloat(credit);
-                customer.description = description;
-                
-                await this.db.update('customers', customer);
-                await this.loadCustomersFromDB();
-                
-                this.hideAddForm();
-                this.showNotification('✅ Client modifié avec succès', 'success');
-            } else {
-                this.showNotification('❌ Client non trouvé', 'error');
-            }
-        } catch (error) {
-            console.error('Erreur modification client:', error);
-            this.showNotification('❌ Erreur lors de la modification', 'error');
-        }
-    }
-
-    async deleteCustomer(id) {
-        if (confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
-            try {
-                await this.db.delete('customers', id);
-                await this.loadCustomersFromDB();
-                this.showNotification('✅ Client supprimé avec succès', 'success');
-            } catch (error) {
-                console.error('Erreur suppression client:', error);
-                this.showNotification('❌ Erreur lors de la suppression', 'error');
-            }
-        }
-    }
-
-    async importCustomers() {
-        try {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.json';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.name.endsWith('.json')) {
-                    this.showNotification('❌ Le fichier doit être au format JSON', 'error');
-                    return;
-                }
-
-                const reader = new FileReader();
-                
-                reader.onload = async (event) => {
-                    try {
-                        const jsonData = JSON.parse(event.target.result);
-                        
-                        if (!Array.isArray(jsonData)) {
-                            throw new Error('Le fichier doit contenir un tableau de clients');
-                        }
-                        
-                        let importedCount = 0;
-                        let skippedCount = 0;
-                        
-                        for (const cust of jsonData) {
-                            try {
-                                if (!cust.name) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                
-                                const newCustomer = {
-                                    name: cust.name.toUpperCase(),
-                                    gender: cust.gender || '',
-                                    phone: cust.phone || '',
-                                    whatsapp: cust.whatsapp || '',
-                                    address: cust.address || '',
-                                    revenue: cust.revenue || 0,
-                                    profit: cust.profit || 0,
-                                    credit: cust.credit || 0,
-                                    description: cust.description || '',
-                                    created_at: cust.created_at ? new Date(cust.created_at) : new Date()
-                                };
-                                
-                                await this.db.add('customers', newCustomer);
-                                importedCount++;
-                            } catch (custError) {
-                                console.error('Erreur import client:', custError);
-                                skippedCount++;
-                            }
-                        }
-                        
-                        await this.loadCustomersFromDB();
-                        this.showNotification(`✅ Import terminé : ${importedCount} importé(s), ${skippedCount} ignoré(s)`, 'success');
-                        
-                    } catch (error) {
-                        this.showNotification('❌ Fichier JSON invalide', 'error');
-                    }
-                };
-                
-                reader.readAsText(file);
-            };
-            
-            document.body.appendChild(fileInput);
-            fileInput.click();
-            setTimeout(() => document.body.removeChild(fileInput), 1000);
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'import', 'error');
-        }
-    }
-
-    async exportCustomers() {
-        try {
-            const customers = await this.db.getAll('customers');
-            
-            if (customers.length === 0) {
-                this.showNotification('❌ Aucun client à exporter', 'warning');
-                return;
-            }
-            
-            const exportData = customers.map(cust => ({
-                id: cust.id,
-                name: cust.name,
-                gender: cust.gender || '',
-                phone: cust.phone || '',
-                whatsapp: cust.whatsapp || '',
-                address: cust.address || '',
-                revenue: cust.revenue || 0,
-                profit: cust.profit || 0,
-                credit: cust.credit || 0,
-                description: cust.description || '',
-                created_at: cust.created_at || new Date().toISOString()
-            }));
-
-            const jsonContent = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `clients_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
-            this.showNotification(`✅ Export réussi ! ${customers.length} client(s) exporté(s)`, 'success');
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    showCustomersList() {
-        this.loadCustomersFromDB();
-        this.showNotification('📋 Liste des clients actualisée', 'info');
-    }
-
-    showNotification(message, type = 'info') {
-        if (window.app) {
-            window.app.showNotification(message, type);
-        }
-    }
-}
-
-// ==================== PRODUCT MANAGER ====================
-class ProductManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.products = [];
-        this.filteredProducts = [];
-        this.categories = [];
-        this.suppliers = [];
-        this.currentSort = { column: 'id', direction: 'asc' };
-        this.editingProductId = null;
-        this.initEventListeners();
-        this.loadProductsFromDB();
-    }
-
-    async loadProductsFromDB() {
-        try {
-            this.products = await this.db.getAll('products');
-            this.categories = await this.db.getAll('categories');
-            this.suppliers = await this.db.getAll('suppliers');
-            this.populateCategorySelect();
-            this.populateSupplierSelect();
-            
-            this.filteredProducts = [...this.products];
-            this.sortProducts(this.currentSort.column, true);
-            this.renderProductsTable();
-            console.log('✅ Produits chargés depuis IndexedDB:', this.products.length);
-        } catch (error) {
-            console.error('❌ Erreur chargement produits:', error);
-            this.products = [];
-            this.filteredProducts = [];
-        }
-    }
-
-    populateCategorySelect() {
-        const categorySelect = document.getElementById('productCategory');
-        if (!categorySelect) return;
-        
-        categorySelect.innerHTML = '<option value="">Sélectionner une catégorie</option>';
-        
-        if (this.categories && this.categories.length > 0) {
-            this.categories.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.id;
-                option.textContent = cat.name;
-                categorySelect.appendChild(option);
-            });
-        }
-    }
-
-    populateSupplierSelect() {
-        const supplierSelect = document.getElementById('productSupplier');
-        if (!supplierSelect) return;
-        
-        supplierSelect.innerHTML = '<option value="">Sélectionner un fournisseur</option>';
-        
-        if (this.suppliers && this.suppliers.length > 0) {
-            this.suppliers.forEach(sup => {
-                const option = document.createElement('option');
-                option.value = sup.id;
-                option.textContent = sup.company || sup.contact_name;
-                supplierSelect.appendChild(option);
-            });
-        }
-    }
-
-    initEventListeners() {
-        const addBtn = document.getElementById('addProductBtn');
-        const cancelBtn = document.getElementById('cancelProductBtn');
-        const form = document.getElementById('productForm');
-        const importBtn = document.getElementById('importProductsBtn');
-        const exportBtn = document.getElementById('exportProductsBtn');
-        const listBtn = document.getElementById('listProductsBtn');
-        const applyFilterBtn = document.getElementById('applyProductFilter');
-        const searchInput = document.getElementById('productSearch');
-        
-        const boxUnit = document.getElementById('productBoxUnit');
-        const boxPrice = document.getElementById('productBoxPrice');
-        const priceSell = document.getElementById('productPriceSell');
-        
-        if (boxUnit && boxPrice) {
-            [boxUnit, boxPrice].forEach(field => {
-                field.addEventListener('input', () => this.calculatePriceUnit());
-            });
-        }
-        
-        if (priceSell) {
-            priceSell.addEventListener('input', () => this.calculateProfit());
-        }
-        
-        if (addBtn) addBtn.addEventListener('click', () => this.showAddForm());
-        if (cancelBtn) cancelBtn.addEventListener('click', () => this.hideAddForm());
-        if (form) form.addEventListener('submit', (e) => this.handleProductSubmit(e));
-        if (importBtn) importBtn.addEventListener('click', () => this.importProducts());
-        if (exportBtn) exportBtn.addEventListener('click', () => this.exportProducts());
-        if (listBtn) listBtn.addEventListener('click', () => this.showProductsList());
-        
-        if (applyFilterBtn) applyFilterBtn.addEventListener('click', () => this.applySearchFilter());
-        if (searchInput) searchInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
-                this.applySearchFilter();
-            }
-        });
-
-        const sortableHeaders = document.querySelectorAll('#productsTable th.sortable');
-        sortableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const column = header.dataset.sort;
-                this.sortProducts(column);
-            });
-        });
-
-        const productsModal = document.getElementById('productsModal');
-        if (productsModal) {
-            productsModal.addEventListener('shown.bs.modal', () => {
-                this.loadProductsFromDB();
-            });
-            productsModal.addEventListener('hidden.bs.modal', () => {
-                this.editingProductId = null;
-            });
-        }
-    }
-
-    async handleProductSubmit(e) {
-        e.preventDefault();
-        
-        if (this.editingProductId) {
-            await this.updateProduct(this.editingProductId);
-        } else {
-            await this.handleAddProduct(e);
-        }
-    }
-
-    applySearchFilter() {
-        const searchTerm = document.getElementById('productSearch')?.value.toLowerCase() || '';
-        
-        if (searchTerm === '') {
-            this.filteredProducts = [...this.products];
-        } else {
-            this.filteredProducts = this.products.filter(product => {
-                return (
-                    (product.name && product.name.toLowerCase().includes(searchTerm)) ||
-                    (product.category && product.category.toLowerCase().includes(searchTerm)) ||
-                    (product.brand && product.brand.toLowerCase().includes(searchTerm)) ||
-                    (product.supplier && product.supplier.toLowerCase().includes(searchTerm)) ||
-                    (product.description && product.description.toLowerCase().includes(searchTerm)) ||
-                    (product.barcode && product.barcode.toLowerCase().includes(searchTerm))
-                );
-            });
-        }
-        
-        this.sortProducts(this.currentSort.column, true);
-        this.renderProductsTable();
-        
-        if (this.filteredProducts.length === 0) {
-            this.showNotification(`🔍 Aucun produit trouvé pour "${searchTerm}"`, 'info');
-        } else {
-            this.showNotification(`🔍 ${this.filteredProducts.length} produit(s) trouvé(s)`, 'success');
-        }
-    }
-
-    sortProducts(column, skipToggle = false) {
-        if (!skipToggle && column === this.currentSort.column) {
-            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-            this.currentSort.column = column;
-            this.currentSort.direction = 'asc';
-        }
-
-        document.querySelectorAll('#productsTable th.sortable i').forEach(icon => {
-            icon.className = 'fas fa-sort ms-1';
-        });
-
-        const currentHeader = document.querySelector(`#productsTable th.sortable[data-sort="${column}"] i`);
-        if (currentHeader) {
-            currentHeader.className = `fas fa-sort-${this.currentSort.direction === 'asc' ? 'up' : 'down'} ms-1`;
-        }
-
-        this.filteredProducts.sort((a, b) => {
-            let valA, valB;
-
-            switch(column) {
-                case 'id':
-                    valA = a.id || 0;
-                    valB = b.id || 0;
-                    break;
-                case 'name':
-                    valA = a.name || '';
-                    valB = b.name || '';
-                    break;
-                case 'category':
-                    valA = a.category || '';
-                    valB = b.category || '';
-                    break;
-                case 'boxUnit':
-                    valA = a.boxUnit || 0;
-                    valB = b.boxUnit || 0;
-                    break;
-                case 'boxPrice':
-                    valA = a.boxPrice || 0;
-                    valB = b.boxPrice || 0;
-                    break;
-                case 'priceUnit':
-                    valA = a.priceUnit || 0;
-                    valB = b.priceUnit || 0;
-                    break;
-                case 'priceSell':
-                    valA = a.priceSell || 0;
-                    valB = b.priceSell || 0;
-                    break;
-                case 'profit':
-                    valA = a.profit || 0;
-                    valB = b.profit || 0;
-                    break;
-                case 'brand':
-                    valA = a.brand || '';
-                    valB = b.brand || '';
-                    break;
-                case 'unit':
-                    valA = a.unit || '';
-                    valB = b.unit || '';
-                    break;
-                case 'supplier':
-                    valA = a.supplier || '';
-                    valB = b.supplier || '';
-                    break;
-                case 'expiration':
-                    valA = a.expiration ? new Date(a.expiration) : new Date(0);
-                    valB = b.expiration ? new Date(b.expiration) : new Date(0);
-                    break;
-                case 'stock':
-                    valA = a.currentStock || a.stock || 0;
-                    valB = b.currentStock || b.stock || 0;
-                    break;
-                case 'soldStock':
-                    valA = a.soldStock || 0;
-                    valB = b.soldStock || 0;
-                    break;
-                case 'created_at':
-                    valA = a.created_at ? new Date(a.created_at) : new Date(0);
-                    valB = b.created_at ? new Date(b.created_at) : new Date(0);
-                    break;
-                default:
-                    valA = a.id || 0;
-                    valB = b.id || 0;
-            }
-
-            if (typeof valA === 'string') {
-                valA = valA.toLowerCase();
-                valB = valB.toLowerCase();
-                if (valA < valB) return this.currentSort.direction === 'asc' ? -1 : 1;
-                if (valA > valB) return this.currentSort.direction === 'asc' ? 1 : -1;
-                return 0;
-            } else {
-                if (valA < valB) return this.currentSort.direction === 'asc' ? -1 : 1;
-                if (valA > valB) return this.currentSort.direction === 'asc' ? 1 : -1;
-                return 0;
-            }
-        });
-
-        this.renderProductsTable();
-    }
-
-    calculatePriceUnit() {
-        const boxUnit = parseFloat(document.getElementById('productBoxUnit')?.value) || 1;
-        const boxPrice = parseFloat(document.getElementById('productBoxPrice')?.value) || 0;
-        const priceUnit = document.getElementById('productPriceUnit');
-        
-        if (priceUnit) {
-            const unitPrice = boxPrice / boxUnit;
-            priceUnit.value = unitPrice.toFixed(2);
-            this.calculateProfit();
-        }
-    }
-
-    calculateProfit() {
-        const priceSell = parseFloat(document.getElementById('productPriceSell')?.value) || 0;
-        const priceUnit = parseFloat(document.getElementById('productPriceUnit')?.value) || 0;
-        const profit = document.getElementById('productProfit');
-        
-        if (profit) {
-            const profitValue = priceSell - priceUnit;
-            profit.value = profitValue.toFixed(2);
-        }
-    }
-
-    showAddForm() {
-        const formCard = document.getElementById('productFormCard');
-        const nameInput = document.getElementById('productName');
-        
-        if (formCard) {
-            formCard.style.display = 'block';
-            if (nameInput) nameInput.focus();
-        }
-    }
-
-    hideAddForm() {
-        const formCard = document.getElementById('productFormCard');
-        const form = document.getElementById('productForm');
-        
-        if (formCard) formCard.style.display = 'none';
-        if (form) form.reset();
-        this.editingProductId = null;
-        document.getElementById('productPriceUnit').value = '0.00';
-        document.getElementById('productProfit').value = '0.00';
-    }
-
-    async handleAddProduct(e) {
-        e.preventDefault();
-        
-        const name = document.getElementById('productName')?.value.trim();
-        const categoryId = document.getElementById('productCategory')?.value;
-        
-        if (!name) {
-            this.showNotification('Veuillez entrer le nom du produit', 'warning');
-            return;
-        }
-        
-        if (!categoryId) {
-            this.showNotification('Veuillez sélectionner une catégorie', 'warning');
-            return;
-        }
-
-        const category = this.categories.find(c => c.id == categoryId);
-        
-        const boxUnit = parseInt(document.getElementById('productBoxUnit')?.value) || 1;
-        const boxPrice = parseFloat(document.getElementById('productBoxPrice')?.value) || 0;
-        const priceUnit = parseFloat(document.getElementById('productPriceUnit')?.value) || 0;
-        const priceSell = parseFloat(document.getElementById('productPriceSell')?.value) || 0;
-        const profit = parseFloat(document.getElementById('productProfit')?.value) || 0;
-        const brand = document.getElementById('productBrand')?.value.trim() || '';
-        const unit = document.getElementById('productUnit')?.value || 'PIECE';
-        const supplierId = document.getElementById('productSupplier')?.value || null;
-        const expiration = document.getElementById('productExpiration')?.value || null;
-        const currentStock = parseInt(document.getElementById('productCurrentStock')?.value) || 0;
-        const soldStock = parseInt(document.getElementById('productSoldStock')?.value) || 0;
-        const description = document.getElementById('productDescription')?.value.trim() || '';
-
-        const supplier = supplierId ? this.suppliers.find(s => s.id == supplierId) : null;
-
-        try {
-            const newProduct = {
-                name: name.toUpperCase(),
-                category: category ? category.name : '',
-                categoryId: parseInt(categoryId),
-                boxUnit: boxUnit,
-                boxPrice: boxPrice,
-                priceUnit: priceUnit,
-                priceSell: priceSell,
-                profit: profit,
-                brand: brand,
-                unit: unit,
-                supplier: supplier ? (supplier.company || supplier.contact_name) : '',
-                supplierId: supplierId ? parseInt(supplierId) : null,
-                expiration: expiration,
-                currentStock: currentStock,
-                soldStock: soldStock,
-                stock: currentStock,
-                description: description,
-                created_at: new Date()
-            };
-
-            await this.db.add('products', newProduct);
-            await this.loadProductsFromDB();
-            
-            this.hideAddForm();
-            this.showNotification(`✅ Produit "${name}" ajouté avec succès`, 'success');
-        } catch (error) {
-            console.error('Erreur ajout produit:', error);
-            this.showNotification('❌ Erreur lors de l\'ajout du produit', 'error');
-        }
-    }
-
-    renderProductsTable() {
-        const tbody = document.getElementById('productsTableBody');
-        const totalSpan = document.getElementById('totalProducts');
-        
-        if (!tbody) return;
-        
-        if (!this.filteredProducts || this.filteredProducts.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="17" class="text-center py-4 text-muted">Aucun produit trouvé</td></tr>`;
-        } else {
-            tbody.innerHTML = this.filteredProducts.map(prod => {
-                let createdDate = '-';
-                if (prod.created_at) {
-                    const date = new Date(prod.created_at);
-                    createdDate = date.toLocaleDateString('fr-FR');
-                }
-                
-                return `
-                <tr>
-                    <td class="px-4 py-3">
-                        <span class="badge bg-light text-dark">#${prod.id}</span>
-                    </td>
-                    <td class="px-4 py-3">${prod.name || '-'}</td>
-                    <td class="px-4 py-3">${prod.category || '-'}</td>
-                    <td class="px-4 py-3 text-center">${prod.boxUnit || 1}</td>
-                    <td class="px-4 py-3 text-end">${(prod.boxPrice || 0).toFixed(2)} DH</td>
-                    <td class="px-4 py-3 text-end">${(prod.priceUnit || 0).toFixed(2)} DH</td>
-                    <td class="px-4 py-3 text-end">${(prod.priceSell || 0).toFixed(2)} DH</td>
-                    <td class="px-4 py-3 text-end text-success">${(prod.profit || 0).toFixed(2)} DH</td>
-                    <td class="px-4 py-3">${prod.brand || '-'}</td>
-                    <td class="px-4 py-3">${prod.unit || 'PIECE'}</td>
-                    <td class="px-4 py-3">${prod.supplier || '-'}</td>
-                    <td class="px-4 py-3">${prod.expiration ? new Date(prod.expiration).toLocaleDateString() : '-'}</td>
-                    <td class="px-4 py-3 text-center">${prod.currentStock || prod.stock || 0}</td>
-                    <td class="px-4 py-3 text-center">${prod.soldStock || 0}</td>
-                    <td class="px-4 py-3">${prod.description ? prod.description.substring(0, 20) + (prod.description.length > 20 ? '...' : '') : '-'}</td>
-                    <td class="px-4 py-3">${createdDate}</td>
-                    <td class="px-4 py-3 text-center">
-                        <button class="btn-action btn-edit me-1" onclick="window.productManager.editProduct(${prod.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-action btn-delete" onclick="window.productManager.deleteProduct(${prod.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `}).join('');
-        }
-
-        if (totalSpan) {
-            totalSpan.textContent = this.filteredProducts?.length || 0;
-        }
-    }
-
-    async editProduct(id) {
-        const product = this.products.find(p => p.id === id);
-        if (product) {
-            this.editingProductId = id;
-            
-            document.getElementById('productName').value = product.name;
-            document.getElementById('productCategory').value = product.categoryId || '';
-            document.getElementById('productBoxUnit').value = product.boxUnit || 1;
-            document.getElementById('productBoxPrice').value = product.boxPrice || 0;
-            document.getElementById('productPriceUnit').value = (product.priceUnit || 0).toFixed(2);
-            document.getElementById('productPriceSell').value = product.priceSell || 0;
-            document.getElementById('productProfit').value = (product.profit || 0).toFixed(2);
-            document.getElementById('productBrand').value = product.brand || '';
-            document.getElementById('productUnit').value = product.unit || 'PIECE';
-            document.getElementById('productSupplier').value = product.supplierId || '';
-            document.getElementById('productExpiration').value = product.expiration || '';
-            document.getElementById('productCurrentStock').value = product.currentStock || product.stock || 0;
-            document.getElementById('productSoldStock').value = product.soldStock || 0;
-            document.getElementById('productDescription').value = product.description || '';
-            
-            this.showAddForm();
-        }
-    }
-
-    async updateProduct(id) {
-        const name = document.getElementById('productName')?.value.trim();
-        const categoryId = document.getElementById('productCategory')?.value;
-        
-        if (!name) {
-            this.showNotification('Veuillez entrer le nom du produit', 'warning');
-            return;
-        }
-        
-        if (!categoryId) {
-            this.showNotification('Veuillez sélectionner une catégorie', 'warning');
-            return;
-        }
-
-        const category = this.categories.find(c => c.id == categoryId);
-        
-        const boxUnit = parseInt(document.getElementById('productBoxUnit')?.value) || 1;
-        const boxPrice = parseFloat(document.getElementById('productBoxPrice')?.value) || 0;
-        const priceUnit = parseFloat(document.getElementById('productPriceUnit')?.value) || 0;
-        const priceSell = parseFloat(document.getElementById('productPriceSell')?.value) || 0;
-        const profit = parseFloat(document.getElementById('productProfit')?.value) || 0;
-        const brand = document.getElementById('productBrand')?.value.trim() || '';
-        const unit = document.getElementById('productUnit')?.value || 'PIECE';
-        const supplierId = document.getElementById('productSupplier')?.value || null;
-        const expiration = document.getElementById('productExpiration')?.value || null;
-        const currentStock = parseInt(document.getElementById('productCurrentStock')?.value) || 0;
-        const soldStock = parseInt(document.getElementById('productSoldStock')?.value) || 0;
-        const description = document.getElementById('productDescription')?.value.trim() || '';
-
-        const supplier = supplierId ? this.suppliers.find(s => s.id == supplierId) : null;
-
-        try {
-            const product = await this.db.getById('products', id);
-            
-            if (product) {
-                product.name = name.toUpperCase();
-                product.category = category ? category.name : '';
-                product.categoryId = parseInt(categoryId);
-                product.boxUnit = boxUnit;
-                product.boxPrice = boxPrice;
-                product.priceUnit = priceUnit;
-                product.priceSell = priceSell;
-                product.profit = profit;
-                product.brand = brand;
-                product.unit = unit;
-                product.supplier = supplier ? (supplier.company || supplier.contact_name) : '';
-                product.supplierId = supplierId ? parseInt(supplierId) : null;
-                product.expiration = expiration;
-                product.currentStock = currentStock;
-                product.soldStock = soldStock;
-                product.stock = currentStock;
-                product.description = description;
-                
-                await this.db.update('products', product);
-                await this.loadProductsFromDB();
-                
-                this.hideAddForm();
-                this.showNotification('✅ Produit modifié avec succès', 'success');
-            } else {
-                this.showNotification('❌ Produit non trouvé', 'error');
-            }
-        } catch (error) {
-            console.error('Erreur modification produit:', error);
-            this.showNotification('❌ Erreur lors de la modification', 'error');
-        }
-    }
-
-    async deleteProduct(id) {
-        if (confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
-            try {
-                await this.db.delete('products', id);
-                await this.loadProductsFromDB();
-                this.showNotification('✅ Produit supprimé avec succès', 'success');
-            } catch (error) {
-                console.error('Erreur suppression produit:', error);
-                this.showNotification('❌ Erreur lors de la suppression', 'error');
-            }
-        }
-    }
-
-    async importProducts() {
-        try {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.json';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.name.endsWith('.json')) {
-                    this.showNotification('❌ Le fichier doit être au format JSON', 'error');
-                    return;
-                }
-
-                const reader = new FileReader();
-                
-                reader.onload = async (event) => {
-                    try {
-                        const jsonData = JSON.parse(event.target.result);
-                        
-                        if (!Array.isArray(jsonData)) {
-                            throw new Error('Le fichier doit contenir un tableau de produits');
-                        }
-                        
-                        let importedCount = 0;
-                        let skippedCount = 0;
-                        
-                        for (const prod of jsonData) {
-                            try {
-                                if (!prod.name) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                
-                                const newProduct = {
-                                    name: prod.name.toUpperCase(),
-                                    category: prod.category || '',
-                                    categoryId: prod.categoryId || null,
-                                    boxUnit: prod.boxUnit || 1,
-                                    boxPrice: prod.boxPrice || 0,
-                                    priceUnit: prod.priceUnit || 0,
-                                    priceSell: prod.priceSell || 0,
-                                    profit: prod.profit || 0,
-                                    brand: prod.brand || '',
-                                    unit: prod.unit || 'PIECE',
-                                    supplier: prod.supplier || '',
-                                    supplierId: prod.supplierId || null,
-                                    expiration: prod.expiration || null,
-                                    currentStock: prod.currentStock || prod.stock || 0,
-                                    soldStock: prod.soldStock || 0,
-                                    stock: prod.currentStock || prod.stock || 0,
-                                    description: prod.description || '',
-                                    created_at: prod.created_at ? new Date(prod.created_at) : new Date()
-                                };
-                                
-                                await this.db.add('products', newProduct);
-                                importedCount++;
-                            } catch (prodError) {
-                                console.error('Erreur import produit:', prodError);
-                                skippedCount++;
-                            }
-                        }
-                        
-                        await this.loadProductsFromDB();
-                        this.showNotification(`✅ Import terminé : ${importedCount} importé(s), ${skippedCount} ignoré(s)`, 'success');
-                        
-                    } catch (error) {
-                        this.showNotification('❌ Fichier JSON invalide', 'error');
-                    }
-                };
-                
-                reader.readAsText(file);
-            };
-            
-            document.body.appendChild(fileInput);
-            fileInput.click();
-            setTimeout(() => document.body.removeChild(fileInput), 1000);
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'import', 'error');
-        }
-    }
-
-    async exportProducts() {
-        try {
-            const products = await this.db.getAll('products');
-            
-            if (products.length === 0) {
-                this.showNotification('❌ Aucun produit à exporter', 'warning');
-                return;
-            }
-            
-            const exportData = products.map(prod => ({
-                id: prod.id,
-                name: prod.name,
-                category: prod.category || '',
-                categoryId: prod.categoryId || null,
-                boxUnit: prod.boxUnit || 1,
-                boxPrice: prod.boxPrice || 0,
-                priceUnit: prod.priceUnit || 0,
-                priceSell: prod.priceSell || 0,
-                profit: prod.profit || 0,
-                brand: prod.brand || '',
-                unit: prod.unit || 'PIECE',
-                supplier: prod.supplier || '',
-                supplierId: prod.supplierId || null,
-                expiration: prod.expiration || null,
-                currentStock: prod.currentStock || prod.stock || 0,
-                soldStock: prod.soldStock || 0,
-                description: prod.description || '',
-                created_at: prod.created_at || new Date().toISOString()
-            }));
-
-            const jsonContent = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `produits_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
-            this.showNotification(`✅ Export réussi ! ${products.length} produit(s) exporté(s)`, 'success');
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    showProductsList() {
-        this.loadProductsFromDB();
-        this.showNotification('📋 Liste des produits actualisée', 'info');
-    }
-
-    showNotification(message, type = 'info') {
-        if (window.app) {
-            window.app.showNotification(message, type);
-        }
-    }
-}
-
-// ==================== POS MANAGER ====================
-class POSManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.currentStep = 1;
-        this.cart = [];
-        this.currentSale = {
-            customerId: null,
-            customerName: 'Client Passager',
-            items: [],
-            subtotal: 0,
-            discount: 0,
-            total: 0,
-            paymentMethod: 'cash',
-            paymentGiven: 0,
-            paymentChange: 0
-        };
-        this.sales = [];
-        this.customers = [];
-        this.products = [];
-        this.currentSort = { column: 'date', direction: 'desc' };
-        this.initEventListeners();
-    }
-
-    initEventListeners() {
-        const nextToCartBtn = document.getElementById('nextToCartBtn');
-        const backToCustomerBtn = document.getElementById('backToCustomerBtn');
-        const nextToPaymentBtn = document.getElementById('nextToPaymentBtn');
-        const backToCartBtn = document.getElementById('backToCartBtn');
-        const completeSaleBtn = document.getElementById('completeSaleBtn');
-        const newSellBtn = document.getElementById('newSellBtn');
-        const listSalesBtn = document.getElementById('listSalesBtn');
-        const applySalesFilter = document.getElementById('applySalesFilter');
-        
-        const addQuickCustomerBtn = document.getElementById('addQuickCustomerBtn');
-        const saveQuickCustomerBtn = document.getElementById('saveQuickCustomerBtn');
-
-        const addToCartBtn = document.getElementById('addToCartBtn');
-        const cartDiscount = document.getElementById('cartDiscount');
-        const paymentGiven = document.getElementById('paymentGiven');
-        const paymentCash = document.getElementById('paymentCash');
-        const paymentCredit = document.getElementById('paymentCredit');
-
-        const sortableHeaders = document.querySelectorAll('#salesTable th.sortable');
-
-        if (nextToCartBtn) nextToCartBtn.addEventListener('click', () => this.goToStep(2));
-        if (backToCustomerBtn) backToCustomerBtn.addEventListener('click', () => this.goToStep(1));
-        if (nextToPaymentBtn) nextToPaymentBtn.addEventListener('click', () => this.goToStep(3));
-        if (backToCartBtn) backToCartBtn.addEventListener('click', () => this.goToStep(2));
-        if (completeSaleBtn) completeSaleBtn.addEventListener('click', () => this.completeSale());
-        if (newSellBtn) newSellBtn.addEventListener('click', () => this.resetPOS());
-        if (listSalesBtn) listSalesBtn.addEventListener('click', () => this.toggleSalesList());
-        if (applySalesFilter) applySalesFilter.addEventListener('click', () => this.loadSales());
-        
-        if (addQuickCustomerBtn) addQuickCustomerBtn.addEventListener('click', () => this.showQuickAddCustomer());
-        if (saveQuickCustomerBtn) saveQuickCustomerBtn.addEventListener('click', () => this.saveQuickCustomer());
-
-        if (addToCartBtn) addToCartBtn.addEventListener('click', () => this.addToCart());
-        if (cartDiscount) cartDiscount.addEventListener('input', () => this.updateCartTotals());
-
-        if (paymentGiven) paymentGiven.addEventListener('input', () => this.calculateChange());
-        if (paymentCash) paymentCash.addEventListener('change', () => this.togglePaymentFields());
-        if (paymentCredit) paymentCredit.addEventListener('change', () => this.togglePaymentFields());
-
-        sortableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const column = header.dataset.sort;
-                this.sortSales(column);
-            });
-        });
-    }
-
-    sortSales(column) {
-        if (column === this.currentSort.column) {
-            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-            this.currentSort.column = column;
-            this.currentSort.direction = 'desc';
-        }
-
-        document.querySelectorAll('#salesTable th.sortable i').forEach(icon => {
-            icon.className = 'fas fa-sort ms-1';
-        });
-
-        const currentHeader = document.querySelector(`#salesTable th.sortable[data-sort="${column}"] i`);
-        if (currentHeader) {
-            currentHeader.className = `fas fa-sort-${this.currentSort.direction === 'asc' ? 'up' : 'down'} ms-1`;
-        }
-
-        this.renderSalesTable();
-    }
-
-    showQuickAddCustomer() {
-        const modal = new bootstrap.Modal(document.getElementById('quickAddCustomerModal'));
-        modal.show();
-    }
-
-    async saveQuickCustomer() {
-        const name = document.getElementById('quickCustomerName')?.value.trim();
-        const phone = document.getElementById('quickCustomerPhone')?.value.trim();
-        const whatsapp = document.getElementById('quickCustomerWhatsapp')?.value.trim();
-
-        if (!name) {
-            this.showNotification('Veuillez entrer le nom du client', 'warning');
-            return;
-        }
-
-        try {
-            const newCustomer = {
-                name: name.toUpperCase(),
-                gender: '',
-                phone: phone || '',
-                whatsapp: whatsapp || '',
-                address: '',
-                revenue: 0,
-                profit: 0,
-                credit: 0,
-                description: 'Ajouté rapidement depuis le POS',
-                created_at: new Date()
-            };
-
-            await this.db.add('customers', newCustomer);
-            
-            await this.loadCustomers();
-            
-            const modal = bootstrap.Modal.getInstance(document.getElementById('quickAddCustomerModal'));
-            if (modal) modal.hide();
-            
-            document.getElementById('quickCustomerForm').reset();
-            
-            this.showNotification(`✅ Client "${name}" ajouté avec succès`, 'success');
-        } catch (error) {
-            console.error('Erreur ajout client rapide:', error);
-            this.showNotification('❌ Erreur lors de l\'ajout du client', 'error');
-        }
-    }
-
-    async initPOS() {
-        await this.loadCustomers();
-        await this.loadProducts();
-        await this.loadSales();
-        this.resetPOS();
-        this.showStep(1);
-    }
-
-    async loadCustomers() {
-        try {
-            this.customers = await this.db.getAll('customers');
-            this.populateCustomerSelect();
-        } catch (error) {
-            console.error('Erreur chargement clients:', error);
-        }
-    }
-
-    async loadProducts() {
-        try {
-            this.products = await this.db.getAll('products');
-            this.populateProductSelect();
-        } catch (error) {
-            console.error('Erreur chargement produits:', error);
-        }
-    }
-
-    async loadSales() {
-        try {
-            this.sales = await this.db.getAll('sales');
-            if (document.getElementById('salesTableBody')) {
-                this.renderSalesTable();
-            }
-        } catch (error) {
-            console.error('Erreur chargement ventes:', error);
-        }
-    }
-
-    populateCustomerSelect() {
-        const select = document.getElementById('saleCustomer');
-        if (!select) return;
-
-        select.innerHTML = '<option value="">Client Passager (par défaut)</option>';
-        
-        if (this.customers && this.customers.length > 0) {
-            this.customers.forEach(cust => {
-                const option = document.createElement('option');
-                option.value = cust.id;
-                option.textContent = `${cust.name} ${cust.phone ? '- ' + cust.phone : ''}`;
-                select.appendChild(option);
-            });
-        }
-    }
-
-    populateProductSelect() {
-        const select = document.getElementById('cartProduct');
-        if (!select) return;
-
-        select.innerHTML = '<option value="">Sélectionner un produit</option>';
-        
-        if (this.products && this.products.length > 0) {
-            this.products.forEach(prod => {
-                const option = document.createElement('option');
-                option.value = prod.id;
-                option.textContent = `${prod.name} - ${prod.priceSell} DH (Stock: ${prod.currentStock || prod.stock || 0})`;
-                select.appendChild(option);
-            });
-        }
-    }
-
-    goToStep(step) {
-        if (step === 2 && !this.validateCustomer()) return;
-        if (step === 3 && !this.validateCart()) return;
-        
-        this.currentStep = step;
-        this.showStep(step);
-    }
-
-    showStep(step) {
-        document.querySelectorAll('.step-item').forEach(el => el.classList.remove('active'));
-        document.getElementById(`step${step}`)?.classList.add('active');
-
-        document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
-        document.getElementById(`step${step}Content`)?.classList.add('active');
-
-        const stepNames = ['Sélection client', 'Panier', 'Paiement'];
-        document.getElementById('posStepIndicator').textContent = `Étape ${step}: ${stepNames[step-1]}`;
-
-        if (step === 3) {
-            this.updatePaymentSummary();
-        }
-    }
-
-    validateCustomer() {
-        const customerSelect = document.getElementById('saleCustomer');
-        if (!customerSelect) return false;
-
-        const customerId = customerSelect.value;
-        const customer = this.customers.find(c => c.id == customerId);
-
-        this.currentSale.customerId = customerId || null;
-        this.currentSale.customerName = customer ? customer.name : 'Client Passager';
-
-        return true;
-    }
-
-    validateCart() {
-        if (this.cart.length === 0) {
-            this.showNotification('Veuillez ajouter au moins un produit au panier', 'warning');
-            return false;
-        }
-        return true;
-    }
-
-    addToCart() {
-        const productSelect = document.getElementById('cartProduct');
-        const quantityInput = document.getElementById('cartQuantity');
-
-        if (!productSelect || !quantityInput) return;
-
-        const productId = productSelect.value;
-        const quantity = parseInt(quantityInput.value) || 1;
-
-        if (!productId) {
-            this.showNotification('Veuillez sélectionner un produit', 'warning');
-            return;
-        }
-
-        const product = this.products.find(p => p.id == productId);
-        if (!product) return;
-
-        const stock = product.currentStock || product.stock || 0;
-        if (quantity > stock) {
-            this.showNotification(`Stock insuffisant. Disponible: ${stock}`, 'warning');
-            return;
-        }
-
-        const existingItem = this.cart.find(item => item.productId == productId);
-        if (existingItem) {
-            existingItem.quantity += quantity;
-        } else {
-            this.cart.push({
-                productId: product.id,
-                productName: product.name,
-                price: product.priceSell || 0,
-                quantity: quantity,
-                total: (product.priceSell || 0) * quantity,
-                profitPerUnit: product.profit || 0,
-                unitPriceCost: product.priceUnit || 0
-            });
-        }
-
-        this.renderCart();
-        this.updateCartTotals();
-        this.showNotification(`✅ Produit ajouté au panier`, 'success');
-    }
-
-    removeFromCart(index) {
-        this.cart.splice(index, 1);
-        this.renderCart();
-        this.updateCartTotals();
-    }
-
-    updateCartItemQuantity(index, newQuantity) {
-        if (newQuantity <= 0) {
-            this.removeFromCart(index);
-            return;
-        }
-
-        const item = this.cart[index];
-        const product = this.products.find(p => p.id == item.productId);
-        
-        if (product) {
-            const stock = product.currentStock || product.stock || 0;
-            if (newQuantity > stock) {
-                this.showNotification(`Stock insuffisant. Disponible: ${stock}`, 'warning');
-                return;
-            }
-        }
-
-        item.quantity = newQuantity;
-        item.total = item.price * newQuantity;
-        this.renderCart();
-        this.updateCartTotals();
-    }
-
-    renderCart() {
-        const tbody = document.getElementById('cartItems');
-        if (!tbody) return;
-
-        if (this.cart.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3">Panier vide</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = this.cart.map((item, index) => `
-            <tr>
-                <td>${item.productName}</td>
-                <td>${item.price.toFixed(2)} DH</td>
-                <td>
-                    <input type="number" class="form-control form-control-sm" style="width: 80px;" 
-                           value="${item.quantity}" min="1" 
-                           onchange="window.posManager.updateCartItemQuantity(${index}, parseInt(this.value) || 1)">
-                </td>
-                <td>${item.total.toFixed(2)} DH</td>
-                <td>
-                    <button class="btn-action btn-delete" onclick="window.posManager.removeFromCart(${index})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    updateCartTotals() {
-        const subtotal = this.cart.reduce((sum, item) => sum + item.total, 0);
-        const discount = parseFloat(document.getElementById('cartDiscount')?.value) || 0;
-        const total = Math.max(0, subtotal - discount);
-
-        this.currentSale.subtotal = subtotal;
-        this.currentSale.discount = discount;
-        this.currentSale.total = total;
-
-        document.getElementById('cartSubtotal').textContent = `${subtotal.toFixed(2)} DH`;
-        document.getElementById('cartTotal').textContent = `${total.toFixed(2)} DH`;
-        document.getElementById('paymentTotal').textContent = `${total.toFixed(2)} DH`;
-
-        this.calculateChange();
-    }
-
-    togglePaymentFields() {
-        const isCash = document.getElementById('paymentCash').checked;
-        document.getElementById('cashPaymentFields').style.display = isCash ? 'block' : 'none';
-        document.getElementById('creditPaymentFields').style.display = isCash ? 'none' : 'block';
-        
-        this.currentSale.paymentMethod = isCash ? 'cash' : 'credit';
-    }
-
-    calculateChange() {
-        const given = parseFloat(document.getElementById('paymentGiven')?.value) || 0;
-        const total = this.currentSale.total;
-        const change = Math.max(0, given - total);
-
-        this.currentSale.paymentGiven = given;
-        this.currentSale.paymentChange = change;
-
-        document.getElementById('paymentChange').value = `${change.toFixed(2)} DH`;
-    }
-
-    updatePaymentSummary() {
-        document.getElementById('paymentCustomer').textContent = this.currentSale.customerName;
-        document.getElementById('paymentTotal').textContent = `${this.currentSale.total.toFixed(2)} DH`;
-    }
-
-    async completeSale() {
-        const isCash = document.getElementById('paymentCash').checked;
-        const given = parseFloat(document.getElementById('paymentGiven')?.value) || 0;
-        
-        const remaining = Math.max(0, this.currentSale.total - given);
-        
-        if (isCash && given <= 0 && this.currentSale.total > 0) {
-            this.showNotification('Veuillez entrer un montant donné', 'warning');
-            return;
-        }
-        
-        if ((!isCash || remaining > 0) && !this.currentSale.customerId) {
-            this.showNotification('Veuillez sélectionner un client pour le crédit ou le paiement partiel', 'warning');
-            return;
-        }
-        
-        if (isCash && remaining > 0) {
-            const confirmPartial = confirm(`Paiement partiel: ${given.toFixed(2)} DH payé, reste ${remaining.toFixed(2)} DH. Voulez-vous créer un crédit pour le reste ?`);
-            if (!confirmPartial) return;
-        }
-
-        let customer = null;
-        if (this.currentSale.customerId) {
-            customer = await this.db.getById('customers', parseInt(this.currentSale.customerId));
-        }
-
-        const totalProfit = this.cart.reduce((sum, item) => {
-            return sum + ((item.profitPerUnit || 0) * item.quantity);
-        }, 0);
-
-        const totalCost = this.cart.reduce((sum, item) => {
-            return sum + ((item.unitPriceCost || 0) * item.quantity);
-        }, 0);
-
-        let paymentMethod = isCash ? 'cash' : 'credit';
-        let status = 'paid';
-        
-        if (isCash && remaining > 0) {
-            status = 'partial';
-            paymentMethod = 'partial';
-        } else if (!isCash) {
-            status = 'credit';
-        }
-
-        const sale = {
-            invoiceNumber: this.generateInvoiceNumber(),
-            date: new Date(),
-            customerId: this.currentSale.customerId,
-            customerName: this.currentSale.customerName,
-            items: this.cart.map(item => {
-                return {
-                    productId: item.productId,
-                    productName: item.productName,
-                    quantity: item.quantity,
-                    price: item.price,
-                    priceCost: (item.unitPriceCost || 0) * item.quantity,
-                    unitPriceCost: item.unitPriceCost || 0,
-                    total: item.total,
-                    profit: (item.profitPerUnit || 0) * item.quantity,
-                    unitProfit: item.profitPerUnit || 0
-                };
-            }),
-            subtotal: this.currentSale.subtotal,
-            discount: this.currentSale.discount,
-            total: this.currentSale.total,
-            totalProfit: totalProfit,
-            totalCost: totalCost,
-            paymentMethod: paymentMethod,
-            paymentGiven: given,
-            paymentChange: isCash ? Math.max(0, given - this.currentSale.total) : 0,
-            remaining: remaining,
-            status: status,
-            createdAt: new Date()
-        };
-
-        try {
-            const saleId = await this.db.add('sales', sale);
-
-            for (const item of this.cart) {
-                const product = this.products.find(p => p.id == item.productId);
-                if (product) {
-                    product.currentStock = (product.currentStock || product.stock || 0) - item.quantity;
-                    product.soldStock = (product.soldStock || 0) + item.quantity;
-                    await this.db.update('products', product);
-                }
-            }
-
-            if (customer) {
-                customer.revenue = (customer.revenue || 0) + this.currentSale.total;
-                customer.profit = (customer.profit || 0) + totalProfit;
-                
-                if (remaining > 0) {
-                    customer.credit = (customer.credit || 0) + remaining;
-                }
-                
-                await this.db.update('customers', customer);
-            }
-
-            if (remaining > 0) {
-                const creditAmount = remaining;
-                
-                const credit = {
-                    saleId: sale.invoiceNumber,
-                    saleId_num: saleId,
-                    customerId: this.currentSale.customerId,
-                    customerName: this.currentSale.customerName,
-                    amount: creditAmount,
-                    remaining: creditAmount,
-                    discount: this.currentSale.discount,
-                    subtotal: this.currentSale.subtotal,
-                    paid: given,
-                    paidAmount: given,
-                    originalTotal: this.currentSale.total,
-                    originalCost: totalCost,
-                    status: 'active',
-                    dueDate: new Date(Date.now() + 30*24*60*60*1000),
-                    items: this.cart.map(item => ({
-                        productId: item.productId,
-                        productName: item.productName,
-                        quantity: item.quantity,
-                        price: item.price,
-                        priceCost: (item.unitPriceCost || 0) * item.quantity,
-                        unitPriceCost: item.unitPriceCost || 0,
-                        total: item.total,
-                        profit: (item.profitPerUnit || 0) * item.quantity,
-                        unitProfit: item.profitPerUnit || 0
-                    })),
-                    paymentHistory: [{
-                        date: new Date(),
-                        amount: given,
-                        type: 'initial',
-                        remaining: creditAmount
-                    }],
-                    created_at: new Date()
-                };
-                
-                await this.db.add('credits', credit);
-                
-                if (window.creditManager) {
-                    window.creditManager.loadCredits();
-                }
-            }
-
-            let message = `✅ Vente finalisée : ${this.currentSale.total.toFixed(2)} DH`;
-            if (remaining > 0) {
-                message += `\n💳 Crédit restant : ${remaining.toFixed(2)} DH (Payé: ${given.toFixed(2)} DH)`;
-            }
-            
-            this.showNotification(message, 'success');
-            
-            await this.loadProducts();
-            await this.loadSales();
-            await this.loadCustomers();
-            
-            this.resetPOS();
-            this.goToStep(1);
-
-        } catch (error) {
-            console.error('Erreur finalisation vente:', error);
-            this.showNotification('❌ Erreur lors de la finalisation', 'error');
-        }
-    }
-
-    calculateItemProfit(item) {
-        const product = this.products.find(p => p.id == item.productId);
-        if (!product) return 0;
-        
-        const profitPerUnit = (product.profit || 0);
-        return profitPerUnit * item.quantity;
-    }
-
-    generateInvoiceNumber() {
-        const date = new Date();
-        const year = date.getFullYear().toString().slice(-2);
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        return `INV-${year}${month}${day}-${random}`;
-    }
-
-    resetPOS() {
-        this.currentStep = 1;
-        this.cart = [];
-        this.currentSale = {
-            customerId: null,
-            customerName: 'Client Passager',
-            items: [],
-            subtotal: 0,
-            discount: 0,
-            total: 0,
-            paymentMethod: 'cash',
-            paymentGiven: 0,
-            paymentChange: 0
-        };
-
-        const saleCustomer = document.getElementById('saleCustomer');
-        if (saleCustomer) saleCustomer.value = '';
-        
-        const cartDiscount = document.getElementById('cartDiscount');
-        if (cartDiscount) cartDiscount.value = '0';
-        
-        const paymentGiven = document.getElementById('paymentGiven');
-        if (paymentGiven) paymentGiven.value = '0';
-        
-        const paymentCash = document.getElementById('paymentCash');
-        if (paymentCash) paymentCash.checked = true;
-        
-        const paymentChange = document.getElementById('paymentChange');
-        if (paymentChange) paymentChange.value = '0.00 DH';
-        
-        this.togglePaymentFields();
-        this.renderCart();
-        this.updateCartTotals();
-        this.showStep(1);
-        
-        const salesListView = document.getElementById('salesListView');
-        if (salesListView) salesListView.style.display = 'none';
-    }
-
-    toggleSalesList() {
-        const listView = document.getElementById('salesListView');
-        const isVisible = listView.style.display !== 'none';
-        
-        listView.style.display = isVisible ? 'none' : 'block';
-        
-        if (!isVisible) {
-            this.loadSales();
-        }
-    }
-
-    renderSalesTable() {
-        const tbody = document.getElementById('salesTableBody');
-        if (!tbody) return;
-
-        const filter = document.getElementById('salesDateFilter')?.value || 'today';
-        const searchTerm = document.getElementById('salesSearch')?.value.toLowerCase() || '';
-
-        let filteredSales = this.filterSalesByDate(this.sales, filter);
-
-        if (searchTerm) {
-            filteredSales = filteredSales.filter(sale => 
-                (sale.invoiceNumber && sale.invoiceNumber.toLowerCase().includes(searchTerm)) ||
-                (sale.customerName && sale.customerName.toLowerCase().includes(searchTerm)) ||
-                (sale.items && sale.items.some(item => 
-                    item.productName && item.productName.toLowerCase().includes(searchTerm)
-                ))
-            );
-        }
-
-        filteredSales.sort((a, b) => {
-            let valA, valB;
-
-            switch(this.currentSort.column) {
-                case 'invoice':
-                    valA = a.invoiceNumber || '';
-                    valB = b.invoiceNumber || '';
-                    break;
-                case 'id':
-                    valA = a.id || 0;
-                    valB = b.id || 0;
-                    break;
-                case 'date':
-                    valA = new Date(a.date);
-                    valB = new Date(b.date);
-                    break;
-                case 'customerId':
-                    valA = a.customerId || 0;
-                    valB = b.customerId || 0;
-                    break;
-                case 'customerName':
-                    valA = a.customerName || '';
-                    valB = b.customerName || '';
-                    break;
-                case 'quantity':
-                    valA = a.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
-                    valB = b.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
-                    break;
-                case 'price':
-                    valA = a.items?.[0]?.price || 0;
-                    valB = b.items?.[0]?.price || 0;
-                    break;
-                case 'total':
-                    valA = a.items?.[0]?.total || 0;
-                    valB = b.items?.[0]?.total || 0;
-                    break;
-                case 'saleProfit':
-                    valA = a.items?.reduce((sum, i) => sum + (i.profit || 0), 0) || 0;
-                    valB = b.items?.reduce((sum, i) => sum + (i.profit || 0), 0) || 0;
-                    break;
-                case 'paid':
-                    valA = a.paymentGiven || 0;
-                    valB = b.paymentGiven || 0;
-                    break;
-                case 'remaining':
-                    valA = a.remaining || 0;
-                    valB = b.remaining || 0;
-                    break;
-                case 'payment':
-                    valA = a.paymentMethod || '';
-                    valB = b.paymentMethod || '';
-                    break;
-                default:
-                    return 0;
-            }
-
-            if (valA < valB) return this.currentSort.direction === 'asc' ? -1 : 1;
-            if (valA > valB) return this.currentSort.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        if (filteredSales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="16" class="text-center py-4">Aucune vente trouvée</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = filteredSales.map(sale => {
-            return sale.items.map((item, idx) => {
-                const priceCost = item.priceCost || (item.unitPriceCost || 0) * item.quantity || 0;
-                const profitPerUnit = item.unitProfit || 0;
-                const itemTotalProfit = profitPerUnit * item.quantity;
-                const saleTotalProfit = sale.items?.reduce((sum, i) => sum + (i.profit || 0), 0) || 0;
-
-                let paymentMethodText = '';
-                if (sale.paymentMethod === 'cash') paymentMethodText = 'Espèces';
-                else if (sale.paymentMethod === 'credit') paymentMethodText = 'Crédit';
-                else if (sale.paymentMethod === 'partial') paymentMethodText = 'Partiel';
-                else paymentMethodText = sale.paymentMethod;
-
-                const showButtons = idx === 0;
-
-                return `
-                    <tr>
-                        <td>${sale.invoiceNumber || 'N/A'}</td>
-                        <td>#${sale.id}</td>
-                        <td>${new Date(sale.date).toLocaleDateString()}</td>
-                        <td>${sale.customerId || '-'}</td>
-                        <td>${sale.customerName || 'Client Passager'}</td>
-                        <td>${item.productName}</td>
-                        <td>${item.quantity}</td>
-                        <td>${item.price.toFixed(2)} DH</td>
-                        <td>${priceCost.toFixed(2)} DH</td>
-                        <td>${profitPerUnit.toFixed(2)} DH</td>
-                        <td>${item.total.toFixed(2)} DH</td>
-                        <td>${itemTotalProfit.toFixed(2)} DH</td>
-                        <td>${saleTotalProfit.toFixed(2)} DH</td>
-                        <td>${sale.paymentGiven ? sale.paymentGiven.toFixed(2) + ' DH' : '-'}</td>
-                        <td>${sale.remaining ? sale.remaining.toFixed(2) + ' DH' : '-'}</td>
-                        <td>${paymentMethodText}</td>
-                        <td>
-                            ${showButtons ? `
-                                <button class="btn-action btn-pdf me-1" onclick="window.salesManager.generateSalePDF(${sale.id})" title="Télécharger PDF" style="color: #e74c3c;">
-                                    <i class="fas fa-file-pdf"></i>
-                                </button>
-                                <button class="btn-action btn-whatsapp me-1" onclick="window.salesManager.sendSaleWhatsApp(${sale.id})" title="Envoyer sur WhatsApp" style="color: #25D366;">
-                                    <i class="fab fa-whatsapp"></i>
-                                </button>
-                                <button class="btn-action btn-edit me-1" onclick="window.salesManager.viewSale(${sale.id})" title="Voir détails">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn-action btn-delete" onclick="window.salesManager.deleteSale(${sale.id})" title="Supprimer">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            ` : ''}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }).join('');
-    }
-
-    filterSalesByDate(sales, filter) {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        const filters = {
-            'today': (date) => date >= today,
-            '1day': (date) => date >= new Date(today.getTime() - 1*24*60*60*1000),
-            '3days': (date) => date >= new Date(today.getTime() - 3*24*60*60*1000),
-            '1week': (date) => date >= new Date(today.getTime() - 7*24*60*60*1000),
-            '15days': (date) => date >= new Date(today.getTime() - 15*24*60*60*1000),
-            '1month': (date) => date >= new Date(today.getTime() - 30*24*60*60*1000),
-            '3months': (date) => date >= new Date(today.getTime() - 90*24*60*60*1000),
-            '6months': (date) => date >= new Date(today.getTime() - 180*24*60*60*1000),
-            '1year': (date) => date >= new Date(today.getTime() - 365*24*60*60*1000),
-            'all': () => true
-        };
-
-        const filterFn = filters[filter] || filters['today'];
-        
-        return sales.filter(sale => filterFn(new Date(sale.date)));
-    }
-
-    showNotification(message, type = 'info') {
-        if (window.app) {
-            window.app.showNotification(message, type);
-        }
-    }
-}
-
-// ==================== SALES MANAGER ====================
-class SalesManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.sales = [];
-        this.filteredSales = [];
-        this.currentSort = { column: 'date', direction: 'desc' };
-        this.initEventListeners();
-    }
-
-    initEventListeners() {
-        const importBtn = document.getElementById('importSalesHistoryBtn');
-        const exportBtn = document.getElementById('exportSalesHistoryBtn');
-        const refreshBtn = document.getElementById('refreshSalesListBtn');
-        const applyFilterBtn = document.getElementById('applySalesHistoryFilter');
-        const searchInput = document.getElementById('salesHistorySearch');
-        const sortableHeaders = document.querySelectorAll('#salesHistoryTable th.sortable');
-
-        if (importBtn) importBtn.addEventListener('click', () => this.importSales());
-        if (exportBtn) exportBtn.addEventListener('click', () => this.exportSales());
-        if (refreshBtn) refreshBtn.addEventListener('click', () => this.loadSales());
-        if (applyFilterBtn) applyFilterBtn.addEventListener('click', () => this.applyFilters());
-        if (searchInput) searchInput.addEventListener('input', () => this.applyFilters());
-
-        sortableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const column = header.dataset.sort;
-                this.sortSales(column);
-            });
-        });
-    }
-
-    async loadSales() {
-        try {
-            this.sales = await this.db.getAll('sales');
-            this.applyFilters();
-            console.log('✅ Ventes chargées depuis IndexedDB:', this.sales.length);
-        } catch (error) {
-            console.error('❌ Erreur chargement ventes:', error);
-            this.sales = [];
-        }
-    }
-
-    applyFilters() {
-        const filter = document.getElementById('salesHistoryDateFilter')?.value || 'all';
-        const searchTerm = document.getElementById('salesHistorySearch')?.value.toLowerCase() || '';
-
-        this.filteredSales = this.filterSalesByDate(this.sales, filter);
-
-        if (searchTerm) {
-            this.filteredSales = this.filteredSales.filter(sale => 
-                (sale.invoiceNumber && sale.invoiceNumber.toLowerCase().includes(searchTerm)) ||
-                (sale.customerName && sale.customerName.toLowerCase().includes(searchTerm)) ||
-                (sale.items && sale.items.some(item => 
-                    item.productName && item.productName.toLowerCase().includes(searchTerm)
-                ))
-            );
-        }
-
-        this.sortSales(this.currentSort.column, true);
-
-        this.updateStats();
-
-        this.renderSalesTable();
-    }
-
-    filterSalesByDate(sales, filter) {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const filters = {
-            'today': (date) => date >= today,
-            'yesterday': (date) => date >= yesterday && date < today,
-            '1day': (date) => date >= new Date(today.getTime() - 1*24*60*60*1000),
-            '3days': (date) => date >= new Date(today.getTime() - 3*24*60*60*1000),
-            '1week': (date) => date >= new Date(today.getTime() - 7*24*60*60*1000),
-            '15days': (date) => date >= new Date(today.getTime() - 15*24*60*60*1000),
-            '1month': (date) => date >= new Date(today.getTime() - 30*24*60*60*1000),
-            '3months': (date) => date >= new Date(today.getTime() - 90*24*60*60*1000),
-            '6months': (date) => date >= new Date(today.getTime() - 180*24*60*60*1000),
-            '1year': (date) => date >= new Date(today.getTime() - 365*24*60*60*1000),
-            'all': () => true
-        };
-
-        const filterFn = filters[filter] || filters['all'];
-        
-        return sales.filter(sale => filterFn(new Date(sale.date)));
-    }
-
-    sortSales(column, skipToggle = false) {
-        if (!skipToggle && column === this.currentSort.column) {
-            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-            this.currentSort.column = column;
-            this.currentSort.direction = 'desc';
-        }
-
-        document.querySelectorAll('#salesHistoryTable th.sortable i').forEach(icon => {
-            icon.className = 'fas fa-sort ms-1';
-        });
-
-        const currentHeader = document.querySelector(`#salesHistoryTable th.sortable[data-sort="${column}"] i`);
-        if (currentHeader) {
-            currentHeader.className = `fas fa-sort-${this.currentSort.direction === 'asc' ? 'up' : 'down'} ms-1`;
-        }
-
-        this.filteredSales.sort((a, b) => {
-            let valA, valB;
-
-            switch(column) {
-                case 'invoice':
-                    valA = a.invoiceNumber || '';
-                    valB = b.invoiceNumber || '';
-                    break;
-                case 'id':
-                    valA = a.id || 0;
-                    valB = b.id || 0;
-                    break;
-                case 'date':
-                    valA = new Date(a.date);
-                    valB = new Date(b.date);
-                    break;
-                case 'customerId':
-                    valA = a.customerId || 0;
-                    valB = b.customerId || 0;
-                    break;
-                case 'customerName':
-                    valA = a.customerName || '';
-                    valB = b.customerName || '';
-                    break;
-                case 'quantity':
-                    valA = a.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
-                    valB = b.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
-                    break;
-                case 'price':
-                    valA = a.items?.[0]?.price || 0;
-                    valB = b.items?.[0]?.price || 0;
-                    break;
-                case 'total':
-                    valA = a.items?.[0]?.total || 0;
-                    valB = b.items?.[0]?.total || 0;
-                    break;
-                case 'saleProfit':
-                    valA = a.items?.reduce((sum, i) => sum + (i.profit || 0), 0) || 0;
-                    valB = b.items?.reduce((sum, i) => sum + (i.profit || 0), 0) || 0;
-                    break;
-                case 'paid':
-                    valA = a.paymentGiven || 0;
-                    valB = b.paymentGiven || 0;
-                    break;
-                case 'remaining':
-                    valA = a.remaining || 0;
-                    valB = b.remaining || 0;
-                    break;
-                case 'payment':
-                    valA = a.paymentMethod || '';
-                    valB = b.paymentMethod || '';
-                    break;
-                default:
-                    return 0;
-            }
-
-            if (valA < valB) return this.currentSort.direction === 'asc' ? -1 : 1;
-            if (valA > valB) return this.currentSort.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        this.renderSalesTable();
-    }
-
-    updateStats() {
-        const totalSales = this.filteredSales.length;
-        const totalRevenue = this.filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-        const totalProfit = this.filteredSales.reduce((sum, sale) => {
-            const saleProfit = sale.items ? sale.items.reduce((itemSum, item) => itemSum + (item.profit || 0), 0) : 0;
-            return sum + saleProfit;
-        }, 0);
-
-        document.getElementById('salesCount').textContent = totalSales;
-        document.getElementById('salesRevenue').textContent = `${totalRevenue.toFixed(2)} DH`;
-        document.getElementById('salesProfit').textContent = `${totalProfit.toFixed(2)} DH`;
-    }
-
-    // ==================== MÉTHODES D'EXPORT EXCEL POUR LES VENTES ====================
-
-    async exportSalesWithExcel() {
-        try {
-            const sales = await this.db.getAll('sales');
-            
-            if (sales.length === 0) {
-                this.showNotification('❌ Aucune vente à exporter', 'warning');
-                return;
-            }
-
-            const exportData = [];
-            
-            sales.forEach(sale => {
-                if (sale.items && sale.items.length > 0) {
-                    sale.items.forEach(item => {
-                        const priceCost = item.priceCost || (item.unitPriceCost || 0) * item.quantity || 0;
-                        const profit = item.profit || (item.unitProfit || 0) * item.quantity || 0;
-                        const paidAmount = sale.paymentGiven || 0;
-                        
-                        exportData.push({
-                            'N° Facture': sale.invoiceNumber || 'N/A',
-                            'ID Vente': sale.id || 'N/A',
-                            'Date': new Date(sale.date).toLocaleDateString('fr-FR'),
-                            'Heure': new Date(sale.date).toLocaleTimeString('fr-FR'),
-                            'Client': sale.customerName || 'Client Passager',
-                            'ID Client': sale.customerId || '-',
-                            'Produit': item.productName || 'N/A',
-                            'Quantité': item.quantity || 0,
-                            'Prix Unitaire (DH)': item.price ? Number(item.price).toFixed(2) : '0.00',
-                            'Prix Revient (DH)': Number(priceCost).toFixed(2),
-                            'Profit Unitaire (DH)': Number(item.unitProfit || 0).toFixed(2),
-                            'Total Produit (DH)': item.total ? Number(item.total).toFixed(2) : '0.00',
-                            'Profit Produit (DH)': Number(profit).toFixed(2),
-                            'Remise (DH)': Number(sale.discount || 0).toFixed(2),
-                            'Total Vente (DH)': Number(sale.total || 0).toFixed(2),
-                            'Payé (DH)': Number(paidAmount).toFixed(2),
-                            'Reste (DH)': Number(sale.remaining || 0).toFixed(2),
-                            'Mode Paiement': this.getPaymentMethodText(sale.paymentMethod),
-                            'Statut': this.getSaleStatus(sale)
-                        });
-                    });
-                } else {
-                    exportData.push({
-                        'N° Facture': sale.invoiceNumber || 'N/A',
-                        'ID Vente': sale.id || 'N/A',
-                        'Date': new Date(sale.date).toLocaleDateString('fr-FR'),
-                        'Heure': new Date(sale.date).toLocaleTimeString('fr-FR'),
-                        'Client': sale.customerName || 'Client Passager',
-                        'ID Client': sale.customerId || '-',
-                        'Produit': 'Sans produit',
-                        'Quantité': 0,
-                        'Prix Unitaire (DH)': '0.00',
-                        'Prix Revient (DH)': '0.00',
-                        'Profit Unitaire (DH)': '0.00',
-                        'Total Produit (DH)': '0.00',
-                        'Profit Produit (DH)': '0.00',
-                        'Remise (DH)': Number(sale.discount || 0).toFixed(2),
-                        'Total Vente (DH)': Number(sale.total || 0).toFixed(2),
-                        'Payé (DH)': Number(sale.paymentGiven || 0).toFixed(2),
-                        'Reste (DH)': Number(sale.remaining || 0).toFixed(2),
-                        'Mode Paiement': this.getPaymentMethodText(sale.paymentMethod),
-                        'Statut': this.getSaleStatus(sale)
-                    });
-                }
-            });
-
-            await this.generateExcelFile(exportData, 'ventes');
-            this.showNotification(`✅ Export réussi ! ${sales.length} vente(s) exportée(s)`, 'success');
-            
-        } catch (error) {
-            console.error('Erreur export ventes:', error);
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    getPaymentMethodText(method) {
-        const methods = {
-            'cash': 'Espèces',
-            'credit': 'Crédit',
-            'partial': 'Partiel'
-        };
-        return methods[method] || method || 'N/A';
-    }
-
-    getSaleStatus(sale) {
-        if (sale.status === 'paid') return 'Payé';
-        if (sale.remaining && sale.remaining > 0) return 'Partiel';
-        if (sale.paymentMethod === 'credit') return 'Crédit';
-        return 'Complet';
-    }
-
-    async generateExcelFile(data, filename) {
-        if (!data || data.length === 0) {
-            this.showNotification('❌ Aucune donnée à exporter', 'warning');
-            return;
-        }
-        
-        const headers = Object.keys(data[0]);
-        const csvRows = [];
-        
-        csvRows.push(headers.join(','));
-        
-        data.forEach(row => {
-            const values = headers.map(header => {
-                const value = row[header] !== undefined && row[header] !== null ? row[header] : '';
-                if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-                    return `"${value.replace(/"/g, '""')}"`;
-                }
-                return value;
-            });
-            csvRows.push(values.join(','));
-        });
-
-        const csvString = '\uFEFF' + csvRows.join('\n');
-        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-        
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        const date = new Date().toISOString().split('T')[0];
-        link.download = `${filename}_${date}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }
-
-    // ==================== AUTRES MÉTHODES ====================
-
-    async generateSalePDF(saleId) {
-        try {
-            const sale = this.sales.find(s => s.id === saleId);
-            if (!sale) {
-                this.showNotification('Vente non trouvée', 'error');
-                return;
-            }
-
-            let customerPhone = '';
-            let customerWhatsapp = '';
-            if (sale.customerId) {
-                const customer = await this.db.getById('customers', sale.customerId);
-                if (customer) {
-                    customerPhone = customer.phone || '';
-                    customerWhatsapp = customer.whatsapp || '';
-                }
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(20);
-            doc.setTextColor(0, 0, 0);
-            doc.text('MiniMarket Pro', 105, 20, { align: 'center' });
-            
-            doc.setFontSize(12);
-            doc.setTextColor(100, 100, 100);
-            doc.text('Facture de vente', 105, 30, { align: 'center' });
-            
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`N° Facture: ${sale.invoiceNumber || 'N/A'}`, 20, 45);
-            doc.text(`Date: ${new Date(sale.date).toLocaleDateString('fr-FR')}`, 20, 52);
-            doc.text(`Client: ${sale.customerName || 'Client Passager'}`, 20, 59);
-            
-            if (customerPhone) {
-                doc.text(`Tél: ${customerPhone}`, 20, 66);
-            }
-            
-            const tableColumn = ["Produit", "Quantité", "Prix unit.", "Total"];
-            const tableRows = [];
-            
-            let totalHT = 0;
-            
-            sale.items.forEach(item => {
-                const row = [
-                    item.productName,
-                    item.quantity.toString(),
-                    item.price.toFixed(2) + ' DH',
-                    item.total.toFixed(2) + ' DH'
-                ];
-                tableRows.push(row);
-                totalHT += item.total;
-            });
-            
-            doc.autoTable({
-                head: [tableColumn],
-                body: tableRows,
-                startY: 75,
-                theme: 'striped',
-                headStyles: { fillColor: [46, 204, 113], textColor: [255, 255, 255] },
-                styles: { fontSize: 9 }
-            });
-            
-            const finalY = doc.lastAutoTable.finalY + 10;
-            
-            doc.setFontSize(10);
-            doc.text('Récapitulatif', 150, finalY);
-            doc.text(`Sous-total: ${sale.subtotal.toFixed(2)} DH`, 150, finalY + 7);
-            
-            if (sale.discount > 0) {
-                doc.text(`Remise: -${sale.discount.toFixed(2)} DH`, 150, finalY + 14);
-                doc.text(`Total: ${sale.total.toFixed(2)} DH`, 150, finalY + 21);
-            } else {
-                doc.text(`Total: ${sale.total.toFixed(2)} DH`, 150, finalY + 14);
-            }
-            
-            doc.text(`Payé: ${sale.paymentGiven?.toFixed(2) || 0} DH`, 150, finalY + 28);
-            
-            if (sale.remaining > 0) {
-                doc.setTextColor(231, 76, 60);
-                doc.text(`Reste: ${sale.remaining.toFixed(2)} DH`, 150, finalY + 35);
-            }
-            
-            doc.setTextColor(0, 0, 0);
-            let paymentText = 'Paiement: ';
-            if (sale.paymentMethod === 'cash') paymentText += 'Espèces';
-            else if (sale.paymentMethod === 'credit') paymentText += 'Crédit';
-            else if (sale.paymentMethod === 'partial') paymentText += 'Paiement partiel';
-            else paymentText += sale.paymentMethod;
-            
-            doc.text(paymentText, 20, finalY + 10);
-            
-            doc.setFontSize(8);
-            doc.setTextColor(150, 150, 150);
-            doc.text('Merci de votre confiance !', 105, 280, { align: 'center' });
-            doc.text(`Généré le ${new Date().toLocaleString('fr-FR')}`, 105, 285, { align: 'center' });
-            
-            doc.save(`facture_${sale.invoiceNumber || sale.id}.pdf`);
-            
-            this.showNotification('✅ PDF généré avec succès', 'success');
-            
-        } catch (error) {
-            console.error('Erreur génération PDF:', error);
-            this.showNotification('❌ Erreur lors de la génération du PDF', 'error');
-        }
-    }
-
-    async sendSaleWhatsApp(saleId) {
-        try {
-            const sale = this.sales.find(s => s.id === saleId);
-            if (!sale) {
-                this.showNotification('Vente non trouvée', 'error');
-                return;
-            }
-
-            if (!sale.customerId) {
-                this.showNotification('Cette vente n\'a pas de client associé', 'warning');
-                return;
-            }
-
-            const customer = await this.db.getById('customers', sale.customerId);
-            if (!customer) {
-                this.showNotification('Client non trouvé', 'error');
-                return;
-            }
-
-            let phoneNumber = customer.whatsapp || customer.phone;
-            if (!phoneNumber) {
-                this.showNotification('Ce client n\'a pas de numéro de téléphone', 'warning');
-                return;
-            }
-
-            phoneNumber = phoneNumber.replace(/\s+/g, '').replace(/[-.]/g, '');
-            
-            let message = `Facture ${sale.invoiceNumber} - ${sale.total} DH`;
-            
-            const urls = [
-                `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`,
-                `https://web.whatsapp.com/send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`,
-                `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-            ];
-            
-            for (const url of urls) {
-                try {
-                    window.open(url, '_blank');
-                    break;
-                } catch (e) {
-                    console.log('URL échouée:', url);
-                }
-            }
-            
-            this.showNotification('✅ WhatsApp ouvert', 'success');
-            
-        } catch (error) {
-            console.error('Erreur WhatsApp:', error);
-            this.showNotification('❌ Erreur', 'error');
-        }
-    }
-
-    renderSalesTable() {
-        const tbody = document.getElementById('salesHistoryTableBody');
-        if (!tbody) return;
-
-        if (this.filteredSales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="19" class="text-center py-4">Aucune vente trouvée</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = this.filteredSales.map(sale => {
-            return sale.items.map((item, idx) => {
-                const priceCost = item.priceCost || (item.unitPriceCost || 0) * item.quantity || 0;
-                const profitPerUnit = item.unitProfit || 0;
-                const itemTotalProfit = profitPerUnit * item.quantity;
-                const saleTotalProfit = sale.items?.reduce((sum, i) => sum + (i.profit || 0), 0) || 0;
-
-                let paymentMethodText = '';
-                if (sale.paymentMethod === 'cash') paymentMethodText = 'Espèces';
-                else if (sale.paymentMethod === 'credit') paymentMethodText = 'Crédit';
-                else if (sale.paymentMethod === 'partial') paymentMethodText = 'Partiel';
-                else paymentMethodText = sale.paymentMethod;
-
-                const remaining = (sale.status === 'paid') ? 0 : (sale.remaining || 0);
-                const showButtons = idx === 0;
-
-                return `
-                    <tr>
-                        <td>${sale.invoiceNumber || 'N/A'}</td>
-                        <td>#${sale.id}</td>
-                        <td>${new Date(sale.date).toLocaleDateString()}</td>
-                        <td>${sale.customerId || '-'}</td>
-                        <td>${sale.customerName || 'Client Passager'}</td>
-                        <td>${item.productName}</td>
-                        <td>${item.quantity}</td>
-                        <td class="text-end">${item.price.toFixed(2)} DH</td>
-                        <td class="text-end">${priceCost.toFixed(2)} DH</td>
-                        <td class="text-end">${profitPerUnit.toFixed(2)} DH</td>
-                        <td class="text-end">${item.total.toFixed(2)} DH</td>
-                        <td class="text-end">${itemTotalProfit.toFixed(2)} DH</td>
-                        <td class="text-end">${saleTotalProfit.toFixed(2)} DH</td>
-                        <td class="text-end">${(sale.discount || 0).toFixed(2)} DH</td>
-                        <td class="text-end">${sale.paymentGiven ? sale.paymentGiven.toFixed(2) + ' DH' : '-'}</td>
-                        <td class="text-end ${remaining > 0 ? 'text-warning fw-bold' : ''}">${remaining.toFixed(2)} DH</td>
-                        <td>${paymentMethodText}</td>
-                        <td class="text-center">
-                            ${showButtons ? `
-                                <button class="btn-action btn-pdf me-1" onclick="window.salesManager.generateSalePDF(${sale.id})" title="Télécharger PDF" style="color: #e74c3c;">
-                                    <i class="fas fa-file-pdf"></i>
-                                </button>
-                                <button class="btn-action btn-whatsapp me-1" onclick="window.salesManager.sendSaleWhatsApp(${sale.id})" title="Envoyer sur WhatsApp" style="color: #25D366;">
-                                    <i class="fab fa-whatsapp"></i>
-                                </button>
-                                <button class="btn-action btn-edit me-1" onclick="window.salesManager.viewSale(${sale.id})" title="Voir détails">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn-action btn-delete" onclick="window.salesManager.deleteSale(${sale.id})" title="Supprimer">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            ` : ''}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }).join('');
-    }
-
-    viewSale(id) {
-        const sale = this.sales.find(s => s.id === id);
-        if (!sale) return;
-
-        const details = `
-            Facture: ${sale.invoiceNumber}
-            Date: ${new Date(sale.date).toLocaleString()}
-            Client: ${sale.customerName || 'Client Passager'}
-            Total: ${sale.total} DH
-            Remise: ${sale.discount || 0} DH
-            Payé: ${sale.paymentGiven || 0} DH
-            Reste: ${sale.remaining || 0} DH
-            Paiement: ${sale.paymentMethod === 'cash' ? 'Espèces' : sale.paymentMethod === 'credit' ? 'Crédit' : 'Partiel'}
-        `;
-        
-        this.showNotification(`Détails de la vente #${id}`, 'info');
-        console.log(details);
-    }
-
-    async deleteSale(id) {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette vente ?')) {
-            try {
-                await this.db.delete('sales', id);
-                await this.loadSales();
-                this.showNotification('✅ Vente supprimée avec succès', 'success');
-            } catch (error) {
-                console.error('Erreur suppression vente:', error);
-                this.showNotification('❌ Erreur lors de la suppression', 'error');
-            }
-        }
-    }
-
-    async importSales() {
-        try {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.json';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.name.endsWith('.json')) {
-                    this.showNotification('❌ Le fichier doit être au format JSON', 'error');
-                    return;
-                }
-
-                const reader = new FileReader();
-                
-                reader.onload = async (event) => {
-                    try {
-                        const jsonData = JSON.parse(event.target.result);
-                        
-                        if (!Array.isArray(jsonData)) {
-                            throw new Error('Le fichier doit contenir un tableau de ventes');
-                        }
-                        
-                        let importedCount = 0;
-                        let skippedCount = 0;
-                        
-                        for (const sale of jsonData) {
-                            try {
-                                if (!sale.invoiceNumber || !sale.date) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                
-                                await this.db.add('sales', sale);
-                                importedCount++;
-                            } catch (saleError) {
-                                console.error('Erreur import vente:', saleError);
-                                skippedCount++;
-                            }
-                        }
-                        
-                        await this.loadSales();
-                        this.showNotification(`✅ Import terminé : ${importedCount} importée(s), ${skippedCount} ignorée(s)`, 'success');
-                        
-                    } catch (error) {
-                        this.showNotification('❌ Fichier JSON invalide', 'error');
-                    }
-                };
-                
-                reader.readAsText(file);
-            };
-            
-            document.body.appendChild(fileInput);
-            fileInput.click();
-            setTimeout(() => document.body.removeChild(fileInput), 1000);
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'import', 'error');
-        }
-    }
-
-    async exportSales() {
-        try {
-            if (this.filteredSales.length === 0) {
-                this.showNotification('❌ Aucune vente à exporter', 'warning');
-                return;
-            }
-            
-            const exportData = this.filteredSales.map(sale => ({
-                id: sale.id,
-                invoiceNumber: sale.invoiceNumber,
-                date: sale.date,
-                customerId: sale.customerId,
-                customerName: sale.customerName,
-                items: sale.items,
-                subtotal: sale.subtotal,
-                discount: sale.discount,
-                total: sale.total,
-                paymentMethod: sale.paymentMethod,
-                paymentGiven: sale.paymentGiven,
-                paymentChange: sale.paymentChange,
-                remaining: sale.remaining,
-                status: sale.status
-            }));
-
-            const jsonContent = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            
-            const date = new Date().toISOString().split('T')[0];
-            link.download = `ventes_${date}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
-            this.showNotification(`✅ Export réussi ! ${exportData.length} vente(s) exportée(s)`, 'success');
-            
-        } catch (error) {
-            console.error('Erreur export:', error);
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    showNotification(message, type = 'info') {
-        if (window.app) {
-            window.app.showNotification(message, type);
-        }
-    }
-}
-
-// ==================== CREDIT MANAGER ====================
-class CreditManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.credits = [];
-        this.filteredCredits = [];
-        this.sales = [];
-        this.customers = [];
-        this.products = [];
-        this.currentSort = { column: 'created_at', direction: 'desc' };
-        this.initEventListeners();
-    }
-
-    initEventListeners() {
-        const addBtn = document.getElementById('addCreditBtn');
-        const importBtn = document.getElementById('importCreditsBtn');
-        const exportBtn = document.getElementById('exportCreditsBtn');
-        const refreshBtn = document.getElementById('refreshCreditsBtn');
-        const applyFilterBtn = document.getElementById('applyCreditFilter');
-        const searchInput = document.getElementById('creditSearch');
-        const statusFilter = document.getElementById('creditStatusFilter');
-        const saveCreditBtn = document.getElementById('saveCreditBtn');
-        const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
-        const addQuickCustomerCreditBtn = document.getElementById('addQuickCustomerCreditBtn');
-        const saveQuickCustomerCreditBtn = document.getElementById('saveQuickCustomerCreditBtn');
-        const sortableHeaders = document.querySelectorAll('#creditsTable th.sortable');
-
-        if (addBtn) addBtn.addEventListener('click', () => this.showAddCreditModal());
-        if (importBtn) importBtn.addEventListener('click', () => this.importCredits());
-        if (exportBtn) exportBtn.addEventListener('click', () => this.exportCredits());
-        if (refreshBtn) refreshBtn.addEventListener('click', () => this.loadCredits());
-        if (applyFilterBtn) applyFilterBtn.addEventListener('click', () => this.applyFilters());
-        if (searchInput) searchInput.addEventListener('input', () => this.applyFilters());
-        if (statusFilter) statusFilter.addEventListener('change', () => this.applyFilters());
-        if (saveCreditBtn) saveCreditBtn.addEventListener('click', () => this.saveCredit());
-        if (confirmPaymentBtn) confirmPaymentBtn.addEventListener('click', () => this.confirmPayment());
-        if (addQuickCustomerCreditBtn) addQuickCustomerCreditBtn.addEventListener('click', () => this.showQuickAddCustomer());
-        if (saveQuickCustomerCreditBtn) saveQuickCustomerCreditBtn.addEventListener('click', () => this.saveQuickCustomer());
-
-        sortableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const column = header.dataset.sort;
-                this.sortCredits(column);
-            });
-        });
-
-        const addCreditModal = document.getElementById('addCreditModal');
-        if (addCreditModal) {
-            addCreditModal.addEventListener('hidden.bs.modal', () => {
-                document.getElementById('addCreditForm').reset();
-            });
-            addCreditModal.addEventListener('shown.bs.modal', () => {
-                this.initCreditFormListeners();
-            });
-        }
-
-        const paymentModal = document.getElementById('paymentModal');
-        if (paymentModal) {
-            paymentModal.addEventListener('hidden.bs.modal', () => {
-                document.getElementById('paymentForm').reset();
-            });
-        }
-    }
-
-    initCreditFormListeners() {
-        const priceSell = document.getElementById('creditPriceSell');
-        const priceCost = document.getElementById('creditPriceCost');
-        const quantity = document.getElementById('creditQuantity');
-        
-        if (priceSell && priceCost && quantity) {
-            const calculateProductFields = () => {
-                const sell = parseFloat(priceSell.value) || 0;
-                const cost = parseFloat(priceCost.value) || 0;
-                const qty = parseInt(quantity.value) || 1;
-                
-                const profitUnit = sell - cost;
-                document.getElementById('creditProfitUnit').value = profitUnit.toFixed(2);
-                
-                const totalProduct = sell * qty;
-                document.getElementById('creditTotalProduct').value = totalProduct.toFixed(2);
-                
-                const profitTotal = profitUnit * qty;
-                document.getElementById('creditProfitTotal').value = profitTotal.toFixed(2);
-                document.getElementById('creditProfitSale').value = profitTotal.toFixed(2);
-                
-                this.calculateRemaining();
-            };
-            
-            priceSell.addEventListener('input', calculateProductFields.bind(this));
-            priceCost.addEventListener('input', calculateProductFields.bind(this));
-            quantity.addEventListener('input', calculateProductFields.bind(this));
-        }
-        
-        const amount = document.getElementById('creditAmount');
-        const paid = document.getElementById('creditPaid');
-        
-        const calculateRemaining = () => {
-            const total = parseFloat(amount.value) || 0;
-            const paidAmount = parseFloat(paid.value) || 0;
-            const remaining = Math.max(0, total - paidAmount);
-            document.getElementById('creditRemaining').value = remaining.toFixed(2);
-        };
-        
-        if (amount && paid) {
-            amount.addEventListener('input', calculateRemaining.bind(this));
-            paid.addEventListener('input', calculateRemaining.bind(this));
-        }
-        
-        const productSelect = document.getElementById('creditProduct');
-        if (productSelect) {
-            productSelect.addEventListener('change', async (e) => {
-                const productId = e.target.value;
-                if (productId) {
-                    try {
-                        const product = await this.db.getById('products', parseInt(productId));
-                        if (product) {
-                            document.getElementById('creditPriceSell').value = product.priceSell || 0;
-                            document.getElementById('creditPriceCost').value = (product.priceUnit || 0);
-                            document.getElementById('creditQuantity').value = 1;
-                            
-                            const sellEvent = new Event('input');
-                            document.getElementById('creditPriceSell').dispatchEvent(sellEvent);
-                            document.getElementById('creditPriceCost').dispatchEvent(sellEvent);
-                            document.getElementById('creditQuantity').dispatchEvent(sellEvent);
-                        }
-                    } catch (error) {
-                        console.error('Erreur chargement produit:', error);
-                    }
-                }
-            });
-        }
-    }
-
-    calculateRemaining() {
-        const amount = document.getElementById('creditAmount');
-        const paid = document.getElementById('creditPaid');
-        if (amount && paid) {
-            const total = parseFloat(amount.value) || 0;
-            const paidAmount = parseFloat(paid.value) || 0;
-            const remaining = Math.max(0, total - paidAmount);
-            document.getElementById('creditRemaining').value = remaining.toFixed(2);
-        }
-    }
-
-    showQuickAddCustomer() {
-        const modal = new bootstrap.Modal(document.getElementById('quickAddCustomerCreditModal'));
-        modal.show();
-    }
-
-    async saveQuickCustomer() {
-        const name = document.getElementById('quickCustomerCreditName')?.value.trim();
-        const phone = document.getElementById('quickCustomerCreditPhone')?.value.trim();
-        const whatsapp = document.getElementById('quickCustomerCreditWhatsapp')?.value.trim();
-
-        if (!name) {
-            this.showNotification('Veuillez entrer le nom du client', 'warning');
-            return;
-        }
-
-        try {
-            const newCustomer = {
-                name: name.toUpperCase(),
-                gender: '',
-                phone: phone || '',
-                whatsapp: whatsapp || '',
-                address: '',
-                revenue: 0,
-                profit: 0,
-                credit: 0,
-                description: 'Ajouté rapidement depuis les crédits',
-                created_at: new Date()
-            };
-
-            await this.db.add('customers', newCustomer);
-            await this.loadCustomers();
-            
-            const modal = bootstrap.Modal.getInstance(document.getElementById('quickAddCustomerCreditModal'));
-            if (modal) modal.hide();
-            
-            document.getElementById('quickCustomerCreditForm').reset();
-            this.showNotification(`✅ Client "${name}" ajouté avec succès`, 'success');
-        } catch (error) {
-            console.error('Erreur ajout client rapide:', error);
-            this.showNotification('❌ Erreur lors de l\'ajout du client', 'error');
-        }
-    }
-
-    sortCredits(column) {
-        if (column === this.currentSort.column) {
-            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-            this.currentSort.column = column;
-            this.currentSort.direction = 'desc';
-        }
-
-        document.querySelectorAll('#creditsTable th.sortable i').forEach(icon => {
-            icon.className = 'fas fa-sort ms-1';
-        });
-
-        const currentHeader = document.querySelector(`#creditsTable th.sortable[data-sort="${column}"] i`);
-        if (currentHeader) {
-            currentHeader.className = `fas fa-sort-${this.currentSort.direction === 'asc' ? 'up' : 'down'} ms-1`;
-        }
-
-        this.sortFilteredCredits();
-        this.renderCreditsTable();
-    }
-
-    async loadCredits() {
-        try {
-            this.credits = await this.db.getAll('credits');
-            this.sales = await this.db.getAll('sales');
-            this.customers = await this.db.getAll('customers');
-            this.products = await this.db.getAll('products');
-            this.populateCustomerSelect();
-            this.populateProductSelect();
-            
-            this.filteredCredits = [...this.credits];
-            
-            this.filteredCredits.sort((a, b) => {
-                const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
-                const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
-                return dateB - dateA;
-            });
-            
-            this.renderCreditsTable();
-            this.updateStats();
-            console.log('✅ Crédits chargés depuis IndexedDB:', this.credits.length);
-        } catch (error) {
-            console.error('❌ Erreur chargement crédits:', error);
-            this.credits = [];
-            this.filteredCredits = [];
-        }
-    }
-
-    populateCustomerSelect() {
-        const select = document.getElementById('creditCustomer');
-        if (!select) return;
-
-        select.innerHTML = '<option value="">Sélectionner un client</option>';
-        
-        if (this.customers && this.customers.length > 0) {
-            this.customers.forEach(cust => {
-                const option = document.createElement('option');
-                option.value = cust.id;
-                option.textContent = `${cust.name} ${cust.phone ? '- ' + cust.phone : ''}`;
-                select.appendChild(option);
-            });
-        }
-    }
-
-    async populateProductSelect() {
-        const select = document.getElementById('creditProduct');
-        if (!select) return;
-        
-        try {
-            const products = await this.db.getAll('products');
-            select.innerHTML = '<option value="">Sélectionner un produit (optionnel)</option>';
-            
-            if (products && products.length > 0) {
-                products.forEach(prod => {
-                    const option = document.createElement('option');
-                    option.value = prod.id;
-                    option.textContent = `${prod.name} - ${prod.priceSell} DH`;
-                    select.appendChild(option);
-                });
-            }
-        } catch (error) {
-            console.error('Erreur chargement produits:', error);
-        }
-    }
-
-    applyFilters() {
-        const searchTerm = document.getElementById('creditSearch')?.value.toLowerCase() || '';
-        const statusFilter = document.getElementById('creditStatusFilter')?.value || 'all';
-
-        this.filteredCredits = this.credits.filter(credit => {
-            const matchesSearch = searchTerm === '' || 
-                (credit.customerName && credit.customerName.toLowerCase().includes(searchTerm)) ||
-                (credit.saleId && credit.saleId.toLowerCase().includes(searchTerm));
-
-            let matchesStatus = true;
-            if (statusFilter !== 'all') {
-                const now = new Date();
-                const dueDate = credit.dueDate ? new Date(credit.dueDate) : null;
-                
-                if (statusFilter === 'active') {
-                    matchesStatus = credit.status === 'active';
-                } else if (statusFilter === 'paid') {
-                    matchesStatus = credit.status === 'paid';
-                } else if (statusFilter === 'overdue') {
-                    matchesStatus = credit.status === 'active' && dueDate && dueDate < now;
-                }
-            }
-
-            return matchesSearch && matchesStatus;
-        });
-
-        this.sortFilteredCredits();
-        this.updateStats();
-        this.renderCreditsTable();
-    }
-
-    sortFilteredCredits() {
-        this.filteredCredits.sort((a, b) => {
-            let valA, valB;
-
-            switch(this.currentSort.column) {
-                case 'invoice':
-                    valA = a.saleId || '';
-                    valB = b.saleId || '';
-                    break;
-                case 'id':
-                    valA = a.id || 0;
-                    valB = b.id || 0;
-                    break;
-                case 'date':
-                case 'created_at':
-                    valA = a.created_at ? new Date(a.created_at) : new Date(0);
-                    valB = b.created_at ? new Date(b.created_at) : new Date(0);
-                    break;
-                case 'customerId':
-                    valA = a.customerId || 0;
-                    valB = b.customerId || 0;
-                    break;
-                case 'customerName':
-                    valA = a.customerName || '';
-                    valB = b.customerName || '';
-                    break;
-                case 'product':
-                    if (a.items && a.items.length > 0) {
-                        valA = a.items[0].productName || '';
-                    } else {
-                        valA = '';
-                    }
-                    if (b.items && b.items.length > 0) {
-                        valB = b.items[0].productName || '';
-                    } else {
-                        valB = '';
-                    }
-                    break;
-                case 'quantity':
-                    valA = a.items ? a.items.reduce((sum, item) => sum + (item.quantity || 0), 0) : 0;
-                    valB = b.items ? b.items.reduce((sum, item) => sum + (item.quantity || 0), 0) : 0;
-                    break;
-                case 'priceSell':
-                    valA = a.items && a.items[0] ? a.items[0].price || 0 : 0;
-                    valB = b.items && b.items[0] ? b.items[0].price || 0 : 0;
-                    break;
-                case 'priceCost':
-                    valA = a.items && a.items[0] ? a.items[0].priceCost || (a.items[0].unitPriceCost || 0) * a.items[0].quantity || 0 : 0;
-                    valB = b.items && b.items[0] ? b.items[0].priceCost || (b.items[0].unitPriceCost || 0) * b.items[0].quantity || 0 : 0;
-                    break;
-                case 'profitUnit':
-                    valA = a.items && a.items[0] ? a.items[0].unitProfit || 0 : 0;
-                    valB = b.items && b.items[0] ? b.items[0].unitProfit || 0 : 0;
-                    break;
-                case 'totalProduct':
-                    valA = a.items && a.items[0] ? a.items[0].total || 0 : 0;
-                    valB = b.items && b.items[0] ? b.items[0].total || 0 : 0;
-                    break;
-                case 'profitTotal':
-                    valA = a.items ? a.items.reduce((sum, item) => sum + (item.profit || 0), 0) : 0;
-                    valB = b.items ? b.items.reduce((sum, item) => sum + (item.profit || 0), 0) : 0;
-                    break;
-                case 'profitSale':
-                    valA = a.items ? a.items.reduce((sum, item) => sum + (item.profit || 0), 0) : 0;
-                    valB = b.items ? b.items.reduce((sum, item) => sum + (item.profit || 0), 0) : 0;
-                    break;
-                case 'discount':
-                    valA = a.discount || 0;
-                    valB = b.discount || 0;
-                    break;
-                case 'paid':
-                    if (a.paymentHistory && a.paymentHistory.length > 0) {
-                        valA = a.paymentHistory.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-                    } else if (a.paid) {
-                        valA = a.paid;
-                    } else if (a.paidAmount) {
-                        valA = a.paidAmount;
-                    } else {
-                        valA = 0;
-                    }
-                    
-                    if (b.paymentHistory && b.paymentHistory.length > 0) {
-                        valB = b.paymentHistory.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-                    } else if (b.paid) {
-                        valB = b.paid;
-                    } else if (b.paidAmount) {
-                        valB = b.paidAmount;
-                    } else {
-                        valB = 0;
-                    }
-                    break;
-                case 'remaining':
-                    valA = (a.status === 'paid') ? 0 : (a.remaining || a.amount || 0);
-                    valB = (b.status === 'paid') ? 0 : (b.remaining || b.amount || 0);
-                    break;
-                case 'dueDate':
-                    valA = a.dueDate ? new Date(a.dueDate) : new Date(0);
-                    valB = b.dueDate ? new Date(b.dueDate) : new Date(0);
-                    break;
-                case 'payment':
-                    valA = a.paymentMethod || a.status || '';
-                    valB = b.paymentMethod || b.status || '';
-                    break;
-                default:
-                    valA = a.created_at ? new Date(a.created_at) : new Date(0);
-                    valB = b.created_at ? new Date(b.created_at) : new Date(0);
-            }
-
-            valA = valA === undefined ? '' : valA;
-            valB = valB === undefined ? '' : valB;
-
-            if (typeof valA === 'string' && typeof valB === 'string') {
-                if (valA < valB) return this.currentSort.direction === 'asc' ? -1 : 1;
-                if (valA > valB) return this.currentSort.direction === 'asc' ? 1 : -1;
-                return 0;
-            } else {
-                if (valA < valB) return this.currentSort.direction === 'asc' ? -1 : 1;
-                if (valA > valB) return this.currentSort.direction === 'asc' ? 1 : -1;
-                return 0;
-            }
-        });
-    }
-
-    updateStats() {
-        const totalCredits = this.filteredCredits.length;
-        const totalAmount = this.filteredCredits.reduce((sum, credit) => sum + (credit.amount || 0), 0);
-        const unpaidCredits = this.filteredCredits.filter(c => c.status === 'active').length;
-
-        document.getElementById('totalCredits').textContent = totalCredits;
-        document.getElementById('totalCreditsAmount').textContent = `${totalAmount.toFixed(2)} DH`;
-        document.getElementById('unpaidCredits').textContent = unpaidCredits;
-    }
-
-    // ==================== MÉTHODES D'EXPORT EXCEL POUR LES CRÉDITS ====================
-
-    async exportCreditsWithExcel() {
-        try {
-            const credits = await this.db.getAll('credits');
-            
-            if (credits.length === 0) {
-                this.showNotification('❌ Aucun crédit à exporter', 'warning');
-                return;
-            }
-
-            const exportData = [];
-            
-            credits.forEach(credit => {
-                let paidAmount = 0;
-                if (credit.paymentHistory && credit.paymentHistory.length > 0) {
-                    paidAmount = credit.paymentHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
-                } else if (credit.paid) {
-                    paidAmount = credit.paid;
-                } else if (credit.paidAmount) {
-                    paidAmount = credit.paidAmount;
-                }
-                
-                const remaining = credit.remaining || credit.amount || 0;
-                const isOverdue = credit.dueDate && new Date(credit.dueDate) < new Date() && credit.status === 'active';
-                
-                if (credit.items && credit.items.length > 0) {
-                    credit.items.forEach(item => {
-                        const priceCost = item.priceCost || (item.unitPriceCost || 0) * item.quantity || 0;
-                        const profit = item.profit || (item.unitProfit || 0) * item.quantity || 0;
-                        
-                        exportData.push({
-                            'N° Facture': credit.saleId || 'N/A',
-                            'ID Crédit': credit.id || 'N/A',
-                            'Date': credit.created_at ? new Date(credit.created_at).toLocaleDateString('fr-FR') : 'N/A',
-                            'Client': credit.customerName || 'Client inconnu',
-                            'ID Client': credit.customerId || '-',
-                            'Produit': item.productName || 'N/A',
-                            'Quantité': item.quantity || 0,
-                            'Prix Vente (DH)': item.price ? Number(item.price).toFixed(2) : '0.00',
-                            'Prix Revient (DH)': Number(priceCost).toFixed(2),
-                            'Profit Unitaire (DH)': Number(item.unitProfit || 0).toFixed(2),
-                            'Total Produit (DH)': item.total ? Number(item.total).toFixed(2) : '0.00',
-                            'Profit Total (DH)': Number(profit).toFixed(2),
-                            'Montant Total (DH)': Number(credit.amount || 0).toFixed(2),
-                            'Remise (DH)': Number(credit.discount || 0).toFixed(2),
-                            'Payé (DH)': Number(paidAmount).toFixed(2),
-                            'Reste (DH)': Number(remaining).toFixed(2),
-                            'Statut': this.getCreditStatus(credit),
-                            'Mode Paiement': this.getCreditPaymentMethod(credit.paymentMethod),
-                            'Date Échéance': credit.dueDate ? new Date(credit.dueDate).toLocaleDateString('fr-FR') : '-',
-                            'En Retard': isOverdue ? 'Oui' : 'Non',
-                            'Description': credit.description || ''
-                        });
-                    });
-                } else {
-                    exportData.push({
-                        'N° Facture': credit.saleId || 'N/A',
-                        'ID Crédit': credit.id || 'N/A',
-                        'Date': credit.created_at ? new Date(credit.created_at).toLocaleDateString('fr-FR') : 'N/A',
-                        'Client': credit.customerName || 'Client inconnu',
-                        'ID Client': credit.customerId || '-',
-                        'Produit': 'Crédit manuel',
-                        'Quantité': 0,
-                        'Prix Vente (DH)': '0.00',
-                        'Prix Revient (DH)': '0.00',
-                        'Profit Unitaire (DH)': '0.00',
-                        'Total Produit (DH)': '0.00',
-                        'Profit Total (DH)': '0.00',
-                        'Montant Total (DH)': Number(credit.amount || 0).toFixed(2),
-                        'Remise (DH)': Number(credit.discount || 0).toFixed(2),
-                        'Payé (DH)': Number(paidAmount).toFixed(2),
-                        'Reste (DH)': Number(remaining).toFixed(2),
-                        'Statut': this.getCreditStatus(credit),
-                        'Mode Paiement': this.getCreditPaymentMethod(credit.paymentMethod),
-                        'Date Échéance': credit.dueDate ? new Date(credit.dueDate).toLocaleDateString('fr-FR') : '-',
-                        'En Retard': isOverdue ? 'Oui' : 'Non',
-                        'Description': credit.description || ''
-                    });
-                }
-            });
-
-            await this.generateExcelFile(exportData, 'credits');
-            this.showNotification(`✅ Export réussi ! ${credits.length} crédit(s) exporté(s)`, 'success');
-            
-        } catch (error) {
-            console.error('Erreur export crédits:', error);
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    getCreditStatus(credit) {
-        if (credit.status === 'paid') return 'Payé';
-        if (credit.status === 'active') {
-            if (credit.dueDate && new Date(credit.dueDate) < new Date()) {
-                return 'En retard';
-            }
-            return 'Actif';
-        }
-        return credit.status || 'N/A';
-    }
-
-    getCreditPaymentMethod(method) {
-        const methods = {
-            'cash': 'Espèces',
-            'credit': 'Crédit',
-            'partial': 'Partiel'
-        };
-        return methods[method] || method || 'N/A';
-    }
-
-    async generateExcelFile(data, filename) {
-        if (!data || data.length === 0) {
-            this.showNotification('❌ Aucune donnée à exporter', 'warning');
-            return;
-        }
-        
-        const headers = Object.keys(data[0]);
-        const csvRows = [];
-        
-        csvRows.push(headers.join(','));
-        
-        data.forEach(row => {
-            const values = headers.map(header => {
-                const value = row[header] !== undefined && row[header] !== null ? row[header] : '';
-                if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-                    return `"${value.replace(/"/g, '""')}"`;
-                }
-                return value;
-            });
-            csvRows.push(values.join(','));
-        });
-
-        const csvString = '\uFEFF' + csvRows.join('\n');
-        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-        
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        const date = new Date().toISOString().split('T')[0];
-        link.download = `${filename}_${date}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }
-
-    // ==================== AUTRES MÉTHODES ====================
-
-    async generateCreditPDF(creditId) {
-        try {
-            const credit = this.credits.find(c => c.id === creditId);
-            if (!credit) {
-                this.showNotification('Crédit non trouvé', 'error');
-                return;
-            }
-
-            let customerPhone = '';
-            let customerWhatsapp = '';
-            if (credit.customerId) {
-                const customer = await this.db.getById('customers', credit.customerId);
-                if (customer) {
-                    customerPhone = customer.phone || '';
-                    customerWhatsapp = customer.whatsapp || '';
-                }
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(20);
-            doc.setTextColor(0, 0, 0);
-            doc.text('MiniMarket Pro', 105, 20, { align: 'center' });
-            
-            doc.setFontSize(12);
-            doc.setTextColor(100, 100, 100);
-            doc.text('Relevé de crédit', 105, 30, { align: 'center' });
-            
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`N° Facture: ${credit.saleId || 'N/A'}`, 20, 45);
-            doc.text(`Date: ${credit.created_at ? new Date(credit.created_at).toLocaleDateString('fr-FR') : 'N/A'}`, 20, 52);
-            doc.text(`Client: ${credit.customerName || 'Client inconnu'}`, 20, 59);
-            
-            if (customerPhone) {
-                doc.text(`Tél: ${customerPhone}`, 20, 66);
-            }
-            
-            if (credit.items && credit.items.length > 0) {
-                const tableColumn = ["Produit", "Quantité", "Prix unit.", "Total"];
-                const tableRows = [];
-                
-                credit.items.forEach(item => {
-                    const row = [
-                        item.productName,
-                        item.quantity.toString(),
-                        item.price.toFixed(2) + ' DH',
-                        item.total.toFixed(2) + ' DH'
-                    ];
-                    tableRows.push(row);
-                });
-                
-                doc.autoTable({
-                    head: [tableColumn],
-                    body: tableRows,
-                    startY: 75,
-                    theme: 'striped',
-                    headStyles: { fillColor: [231, 76, 60], textColor: [255, 255, 255] },
-                    styles: { fontSize: 9 }
-                });
-                
-                var finalY = doc.lastAutoTable.finalY + 10;
-            } else {
-                doc.text('Crédit sans produits', 20, 75);
-                var finalY = 85;
-            }
-            
-            doc.setFontSize(10);
-            doc.text('Détails du crédit', 20, finalY);
-            doc.text(`Montant total: ${credit.amount.toFixed(2)} DH`, 20, finalY + 7);
-            
-            if (credit.discount > 0) {
-                doc.text(`Remise: -${credit.discount.toFixed(2)} DH`, 20, finalY + 14);
-            }
-            
-            let paidAmount = 0;
-            if (credit.paymentHistory && credit.paymentHistory.length > 0) {
-                paidAmount = credit.paymentHistory.reduce((sum, p) => sum + p.amount, 0);
-            } else if (credit.paid) {
-                paidAmount = credit.paid;
-            }
-            
-            doc.text(`Montant payé: ${paidAmount.toFixed(2)} DH`, 20, finalY + 21);
-            
-            doc.setFontSize(12);
-            doc.setTextColor(231, 76, 60);
-            doc.text(`Reste à payer: ${(credit.remaining || credit.amount).toFixed(2)} DH`, 20, finalY + 30);
-            
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            if (credit.dueDate) {
-                doc.text(`Date d'échéance: ${new Date(credit.dueDate).toLocaleDateString('fr-FR')}`, 20, finalY + 40);
-            }
-            
-            const statusText = credit.status === 'paid' ? 'Payé' : 
-                              (credit.status === 'active' ? 'En cours' : 'En retard');
-            doc.text(`Statut: ${statusText}`, 20, finalY + 47);
-            
-            doc.setFontSize(8);
-            doc.setTextColor(150, 150, 150);
-            doc.text('Merci de votre confiance !', 105, 280, { align: 'center' });
-            doc.text(`Généré le ${new Date().toLocaleString('fr-FR')}`, 105, 285, { align: 'center' });
-            
-            doc.save(`credit_${credit.saleId || credit.id}.pdf`);
-            
-            this.showNotification('✅ PDF généré avec succès', 'success');
-            
-        } catch (error) {
-            console.error('Erreur génération PDF:', error);
-            this.showNotification('❌ Erreur lors de la génération du PDF', 'error');
-        }
-    }
-
-    async sendCreditWhatsApp(creditId) {
-        try {
-            const credit = this.credits.find(c => c.id === creditId);
-            if (!credit) {
-                this.showNotification('Crédit non trouvé', 'error');
-                return;
-            }
-
-            if (!credit.customerId) {
-                this.showNotification('Ce crédit n\'a pas de client associé', 'warning');
-                return;
-            }
-
-            const customer = await this.db.getById('customers', credit.customerId);
-            if (!customer) {
-                this.showNotification('Client non trouvé', 'error');
-                return;
-            }
-
-            let phoneNumber = customer.whatsapp || customer.phone;
-            if (!phoneNumber) {
-                this.showNotification('Ce client n\'a pas de numéro de téléphone', 'warning');
-                return;
-            }
-
-            phoneNumber = phoneNumber.replace(/\s+/g, '').replace(/[-.]/g, '');
-            
-            if (phoneNumber.startsWith('0')) {
-                phoneNumber = '212' + phoneNumber.substring(1);
-            }
-            phoneNumber = phoneNumber.replace(/^\+/, '');
-
-            let paidAmount = 0;
-            if (credit.paymentHistory && credit.paymentHistory.length > 0) {
-                paidAmount = credit.paymentHistory.reduce((sum, p) => sum + p.amount, 0);
-            } else if (credit.paid) {
-                paidAmount = credit.paid;
-            } else if (credit.paidAmount) {
-                paidAmount = credit.paidAmount;
-            }
-            
-            const remaining = credit.remaining || credit.amount;
-            
-            const today = new Date();
-            const isLate = credit.dueDate && new Date(credit.dueDate) < today && remaining > 0;
-            
-            let message = `*MiniMarket Pro - Relevé de crédit*\n\n`;
-            message += `📅 *Date:* ${credit.created_at ? new Date(credit.created_at).toLocaleDateString('fr-FR') : 'N/A'}\n`;
-            message += `🧾 *N° Facture:* ${credit.saleId || 'N/A'}\n`;
-            message += `👤 *Client:* ${credit.customerName}\n\n`;
-            
-            if (credit.items && credit.items.length > 0) {
-                message += `📦 *Produits:*\n`;
-                credit.items.forEach(item => {
-                    message += `• ${item.productName} x${item.quantity} = ${item.total.toFixed(2)} DH\n`;
-                });
-                message += '\n';
-            }
-            
-            message += `💰 *Détails du crédit:*\n`;
-            message += `Montant total: ${credit.amount.toFixed(2)} DH\n`;
-            
-            if (credit.discount > 0) {
-                message += `Remise: -${credit.discount.toFixed(2)} DH\n`;
-            }
-            
-            message += `Montant payé: ${paidAmount.toFixed(2)} DH\n`;
-            message += `*Reste à payer: ${remaining.toFixed(2)} DH*\n`;
-            
-            if (credit.dueDate) {
-                const dueDate = new Date(credit.dueDate).toLocaleDateString('fr-FR');
-                message += `📆 *Date d'échéance:* ${dueDate}`;
-                if (isLate) {
-                    message += ` ⚠️ *EN RETARD*`;
-                }
-                message += '\n';
-            }
-            
-            message += `\n✅ *Merci de régulariser votre situation.*`;
-            
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-            
-            window.open(whatsappUrl, '_blank');
-            
-            this.showNotification('✅ WhatsApp ouvert avec succès', 'success');
-            
-        } catch (error) {
-            console.error('Erreur envoi WhatsApp:', error);
-            this.showNotification('❌ Erreur lors de l\'ouverture de WhatsApp', 'error');
-        }
-    }
-
-    renderCreditsTable() {
-        const tbody = document.getElementById('creditsTableBody');
-        if (!tbody) return;
-
-        if (this.filteredCredits.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="20" class="text-center py-4">Aucun crédit trouvé</td></tr>';
-            return;
-        }
-
-        const now = new Date();
-
-        tbody.innerHTML = this.filteredCredits.map(credit => {
-            const dueDate = credit.dueDate ? new Date(credit.dueDate) : null;
-            const isOverdue = credit.status === 'active' && dueDate && dueDate < now;
-            
-            let paidAmount = 0;
-            if (credit.paymentHistory && credit.paymentHistory.length > 0) {
-                paidAmount = credit.paymentHistory.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-            } else if (credit.paid) {
-                paidAmount = credit.paid;
-            } else if (credit.paidAmount) {
-                paidAmount = credit.paidAmount;
-            }
-            
-            const remaining = credit.remaining || credit.amount || 0;
-
-            let statusBadge = '';
-            let statusClass = '';
-            let paymentMethodText = '';
-            
-            if (credit.status === 'paid') {
-                statusBadge = '<span class="badge bg-success">Payé</span>';
-                statusClass = 'paid';
-                paymentMethodText = credit.paymentMethod === 'cash' ? 'Espèces' : 'Crédit';
-            } else if (isOverdue) {
-                statusBadge = '<span class="badge bg-danger">En retard</span>';
-                statusClass = 'overdue';
-                paymentMethodText = credit.paymentMethod === 'cash' ? 'Espèces' : 'Crédit';
-            } else {
-                statusBadge = '<span class="badge bg-warning">Actif</span>';
-                statusClass = 'active';
-                paymentMethodText = credit.paymentMethod === 'cash' ? 'Espèces' : 'Crédit';
-            }
-
-            if (credit.paymentMethod === 'cash') paymentMethodText = 'Espèces';
-            else if (credit.paymentMethod === 'credit') paymentMethodText = 'Crédit';
-            else if (credit.paymentMethod === 'partial') paymentMethodText = 'Partiel';
-            else paymentMethodText = credit.paymentMethod || 'Crédit';
-
-            if (credit.items && credit.items.length > 0) {
-                return credit.items.map((item, idx) => {
-                    const priceCost = item.priceCost || (item.unitPriceCost || 0) * item.quantity || 0;
-                    const profitPerUnit = item.unitProfit || 0;
-                    const itemTotalProfit = profitPerUnit * item.quantity;
-                    const saleTotalProfit = credit.profitSale || credit.profitTotal || 0;
-                    const showButtons = idx === 0;
-                    
-                    return `
-                        <tr class="${statusClass}">
-                            <td>${credit.saleId || 'N/A'}</td>
-                            <td>#${credit.id}</td>
-                            <td>${credit.created_at ? new Date(credit.created_at).toLocaleDateString() : 'N/A'}</td>
-                            <td>${credit.customerId || '-'}</td>
-                            <td>${credit.customerName || 'Client inconnu'}</td>
-                            <td>${item.productName}</td>
-                            <td>${item.quantity}</td>
-                            <td class="text-end">${(item.price || 0).toFixed(2)} DH</td>
-                            <td class="text-end">${(priceCost || 0).toFixed(2)} DH</td>
-                            <td class="text-end">${(profitPerUnit || 0).toFixed(2)} DH</td>
-                            <td class="text-end">${(item.total || 0).toFixed(2)} DH</td>
-                            <td class="text-end">${(itemTotalProfit || 0).toFixed(2)} DH</td>
-                            <td class="text-end">${(saleTotalProfit || 0).toFixed(2)} DH</td>
-                            <td class="text-end">${(credit.discount || 0).toFixed(2)} DH</td>
-                            <td class="text-end">${(paidAmount || 0).toFixed(2)} DH</td>
-                            <td class="text-end ${remaining > 0 ? 'text-warning fw-bold' : ''}">${(remaining || 0).toFixed(2)} DH</td>
-                            <td>${dueDate ? dueDate.toLocaleDateString() : '-'}</td>
-                            <td>${paymentMethodText}</td>
-                            <td class="text-center">
-                                ${showButtons ? `
-                                    <button class="btn-action btn-pdf me-1" onclick="window.creditManager.generateCreditPDF(${credit.id})" title="Télécharger PDF" style="color: #e74c3c;">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </button>
-                                    <button class="btn-action btn-whatsapp me-1" onclick="window.creditManager.sendCreditWhatsApp(${credit.id})" title="Envoyer sur WhatsApp" style="color: #25D366;">
-                                        <i class="fab fa-whatsapp"></i>
-                                    </button>
-                                    ${credit.status === 'active' ? `
-                                        <button class="btn-action btn-edit me-1" onclick="window.creditManager.showPaymentModal(${credit.id})" title="Effectuer un paiement">
-                                            <i class="fas fa-money-bill-wave"></i>
-                                        </button>
-                                    ` : ''}
-                                    <button class="btn-action btn-delete" onclick="window.creditManager.deleteCredit(${credit.id})" title="Supprimer">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                ` : ''}
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-            } else {
-                return `
-                    <tr class="${statusClass}">
-                        <td>${credit.saleId || 'N/A'}</td>
-                        <td>#${credit.id}</td>
-                        <td>${credit.created_at ? new Date(credit.created_at).toLocaleDateString() : 'N/A'}</td>
-                        <td>${credit.customerId || '-'}</td>
-                        <td>${credit.customerName || 'Client inconnu'}</td>
-                        <td colspan="6" class="text-center text-muted">Crédit manuel (sans produits)</td>
-                        <td class="text-end">${(credit.profitTotal || 0).toFixed(2)} DH</td>
-                        <td class="text-end">${(credit.profitSale || credit.profitTotal || 0).toFixed(2)} DH</td>
-                        <td class="text-end">${(credit.discount || 0).toFixed(2)} DH</td>
-                        <td class="text-end">${(paidAmount || 0).toFixed(2)} DH</td>
-                        <td class="text-end ${remaining > 0 ? 'text-warning fw-bold' : ''}">${(remaining || 0).toFixed(2)} DH</td>
-                        <td>${dueDate ? dueDate.toLocaleDateString() : '-'}</td>
-                        <td>${paymentMethodText}</td>
-                        <td class="text-center">
-                            <button class="btn-action btn-pdf me-1" onclick="window.creditManager.generateCreditPDF(${credit.id})" title="Télécharger PDF" style="color: #e74c3c;">
-                                <i class="fas fa-file-pdf"></i>
-                            </button>
-                            <button class="btn-action btn-whatsapp me-1" onclick="window.creditManager.sendCreditWhatsApp(${credit.id})" title="Envoyer sur WhatsApp" style="color: #25D366;">
-                                <i class="fab fa-whatsapp"></i>
-                            </button>
-                            ${credit.status === 'active' ? `
-                                <button class="btn-action btn-edit me-1" onclick="window.creditManager.showPaymentModal(${credit.id})" title="Effectuer un paiement">
-                                    <i class="fas fa-money-bill-wave"></i>
-                                </button>
-                            ` : ''}
-                            <button class="btn-action btn-delete" onclick="window.creditManager.deleteCredit(${credit.id})" title="Supprimer">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }
-        }).join('');
-    }
-
-    showAddCreditModal() {
-        this.populateCustomerSelect();
-        this.populateProductSelect();
-        
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('creditDate').value = today;
-        
-        const dueDate = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
-        document.getElementById('creditDueDate').value = dueDate;
-        
-        document.getElementById('creditProfitUnit').value = '0.00';
-        document.getElementById('creditTotalProduct').value = '0.00';
-        document.getElementById('creditProfitTotal').value = '0.00';
-        document.getElementById('creditRemaining').value = '0.00';
-        
-        const modal = new bootstrap.Modal(document.getElementById('addCreditModal'));
-        modal.show();
-    }
-
-    async saveCredit() {
-        const invoice = document.getElementById('creditInvoice')?.value.trim();
-        const date = document.getElementById('creditDate')?.value;
-        const customerId = document.getElementById('creditCustomer')?.value;
-        const customerSelect = document.getElementById('creditCustomer');
-        const customerName = customerSelect.selectedOptions[0]?.text.split(' -')[0] || '';
-        const productId = document.getElementById('creditProduct')?.value;
-        const quantity = parseInt(document.getElementById('creditQuantity')?.value) || 1;
-        const priceSell = parseFloat(document.getElementById('creditPriceSell')?.value) || 0;
-        const priceCost = parseFloat(document.getElementById('creditPriceCost')?.value) || 0;
-        const profitUnit = parseFloat(document.getElementById('creditProfitUnit')?.value) || 0;
-        const totalProduct = parseFloat(document.getElementById('creditTotalProduct')?.value) || 0;
-        const profitTotal = parseFloat(document.getElementById('creditProfitTotal')?.value) || 0;
-        const profitSale = parseFloat(document.getElementById('creditProfitSale')?.value) || profitTotal;
-        const amount = parseFloat(document.getElementById('creditAmount')?.value) || 0;
-        const discount = parseFloat(document.getElementById('creditDiscount')?.value) || 0;
-        const paid = parseFloat(document.getElementById('creditPaid')?.value) || 0;
-        const remaining = parseFloat(document.getElementById('creditRemaining')?.value) || amount;
-        const dueDate = document.getElementById('creditDueDate')?.value;
-        const paymentMethod = document.getElementById('creditPaymentMethod')?.value || 'credit';
-        const description = document.getElementById('creditDescription')?.value.trim();
-
-        if (!customerId) {
-            this.showNotification('Veuillez sélectionner un client', 'warning');
-            return;
-        }
-
-        if (amount <= 0) {
-            this.showNotification('Veuillez entrer un montant valide', 'warning');
-            return;
-        }
-
-        const customer = this.customers.find(c => c.id == customerId);
-
-        try {
-            const items = [];
-            if (productId && priceSell > 0) {
-                const product = await this.db.getById('products', parseInt(productId));
-                items.push({
-                    productId: parseInt(productId),
-                    productName: product ? product.name : 'Produit inconnu',
-                    quantity: quantity,
-                    price: priceSell,
-                    priceCost: priceCost * quantity,
-                    unitPriceCost: priceCost,
-                    total: totalProduct,
-                    profit: profitTotal,
-                    unitProfit: profitUnit
-                });
-            }
-
-            const newCredit = {
-                saleId: invoice || `CRD-${Date.now()}`,
-                date: date || new Date().toISOString().split('T')[0],
-                customerId: parseInt(customerId),
-                customerName: customer ? customer.name : customerName,
-                items: items,
-                amount: amount,
-                discount: discount,
-                subtotal: amount + discount,
-                paid: paid,
-                remaining: remaining,
-                priceSell: priceSell,
-                priceCost: priceCost,
-                profitUnit: profitUnit,
-                totalProduct: totalProduct,
-                profitTotal: profitTotal,
-                profitSale: profitSale,
-                status: remaining === 0 ? 'paid' : 'active',
-                dueDate: dueDate || new Date(Date.now() + 30*24*60*60*1000),
-                paymentMethod: paymentMethod,
-                description: description,
-                paymentHistory: paid > 0 ? [{
-                    date: new Date(),
-                    amount: paid,
-                    remaining: remaining
-                }] : [],
-                created_at: new Date()
-            };
-
-            const creditId = await this.db.add('credits', newCredit);
-            
-            if (customer) {
-                customer.credit = (customer.credit || 0) + remaining;
-                await this.db.update('customers', customer);
-            }
-            
-            await this.loadCredits();
-
-            const modal = bootstrap.Modal.getInstance(document.getElementById('addCreditModal'));
-            if (modal) modal.hide();
-
-            this.showNotification('✅ Crédit ajouté avec succès', 'success');
-        } catch (error) {
-            console.error('Erreur ajout crédit:', error);
-            this.showNotification('❌ Erreur lors de l\'ajout du crédit', 'error');
-        }
-    }
-
-    showPaymentModal(id) {
-        const credit = this.credits.find(c => c.id === id);
-        if (!credit) return;
-
-        const remaining = credit.remaining || credit.amount || 0;
-
-        document.getElementById('paymentCustomerName').value = credit.customerName || '';
-        document.getElementById('paymentTotalAmount').value = `${credit.amount?.toFixed(2) || 0} DH`;
-        document.getElementById('paymentRemainingAmount').value = `${remaining.toFixed(2)} DH`;
-        document.getElementById('paymentAmount').value = remaining.toFixed(2);
-        document.getElementById('paymentCreditId').value = id;
-
-        const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
-        modal.show();
-    }
-
-    async confirmPayment() {
-        const id = document.getElementById('paymentCreditId')?.value;
-        const paymentAmount = parseFloat(document.getElementById('paymentAmount')?.value) || 0;
-
-        if (!id) return;
-
-        const credit = this.credits.find(c => c.id == id);
-        if (!credit) return;
-
-        const remaining = credit.remaining || credit.amount || 0;
-
-        if (paymentAmount <= 0) {
-            this.showNotification('Veuillez entrer un montant valide', 'warning');
-            return;
-        }
-
-        if (paymentAmount > remaining) {
-            this.showNotification('Le montant payé ne peut pas dépasser le reste', 'warning');
-            return;
-        }
-
-        try {
-            const newRemaining = remaining - paymentAmount;
-            
-            if (!credit.paymentHistory) credit.paymentHistory = [];
-            credit.paymentHistory.push({
-                date: new Date(),
-                amount: paymentAmount,
-                remaining: newRemaining
-            });
-            
-            const totalPaid = (credit.paid || 0) + paymentAmount;
-            credit.paid = totalPaid;
-            
-            if (newRemaining === 0) {
-                credit.status = 'paid';
-                credit.remaining = 0;
-            } else {
-                credit.remaining = newRemaining;
-            }
-
-            await this.db.update('credits', credit);
-            
-            if (credit.saleId) {
-                const sales = await this.db.getAll('sales');
-                const sale = sales.find(s => s.invoiceNumber === credit.saleId);
-                if (sale) {
-                    sale.paymentGiven = (sale.paymentGiven || 0) + paymentAmount;
-                    sale.remaining = newRemaining;
-                    
-                    if (newRemaining === 0) {
-                        if (sale.paymentMethod === 'credit' || sale.paymentMethod === 'partial') {
-                            sale.paymentMethod = 'cash';
-                        }
-                        sale.status = 'paid';
-                    } else {
-                        sale.status = 'partial';
-                    }
-                    
-                    await this.db.update('sales', sale);
-                    
-                    if (window.salesManager) {
-                        window.salesManager.loadSales();
-                    }
-                }
-            }
-            
-            if (credit.customerId) {
-                const customer = await this.db.getById('customers', credit.customerId);
-                if (customer) {
-                    customer.credit = Math.max(0, (customer.credit || 0) - paymentAmount);
-                    await this.db.update('customers', customer);
-                    
-                    if (window.customerManager) {
-                        window.customerManager.loadCustomersFromDB();
-                    }
-                }
-            }
-            
-            const modal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
-            if (modal) modal.hide();
-
-            await this.loadCredits();
-            this.showNotification(`✅ Paiement de ${paymentAmount.toFixed(2)} DH enregistré`, 'success');
-        } catch (error) {
-            console.error('Erreur paiement:', error);
-            this.showNotification('❌ Erreur lors du paiement', 'error');
-        }
-    }
-
-    async deleteCredit(id) {
-        if (confirm('Êtes-vous sûr de vouloir supprimer ce crédit ?')) {
-            try {
-                const credit = this.credits.find(c => c.id == id);
-                
-                if (credit && credit.customerId) {
-                    const customer = await this.db.getById('customers', credit.customerId);
-                    if (customer) {
-                        const remaining = credit.remaining || credit.amount || 0;
-                        customer.credit = Math.max(0, (customer.credit || 0) - remaining);
-                        await this.db.update('customers', customer);
-                    }
-                }
-                
-                await this.db.delete('credits', id);
-                await this.loadCredits();
-                this.showNotification('✅ Crédit supprimé avec succès', 'success');
-            } catch (error) {
-                console.error('Erreur suppression crédit:', error);
-                this.showNotification('❌ Erreur lors de la suppression', 'error');
-            }
-        }
-    }
-
-    async importCredits() {
-        try {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.json';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.name.endsWith('.json')) {
-                    this.showNotification('❌ Le fichier doit être au format JSON', 'error');
-                    return;
-                }
-
-                const reader = new FileReader();
-                
-                reader.onload = async (event) => {
-                    try {
-                        const jsonData = JSON.parse(event.target.result);
-                        
-                        if (!Array.isArray(jsonData)) {
-                            throw new Error('Le fichier doit contenir un tableau de crédits');
-                        }
-                        
-                        let importedCount = 0;
-                        let skippedCount = 0;
-                        
-                        for (const credit of jsonData) {
-                            try {
-                                if (!credit.customerName || !credit.amount) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                
-                                await this.db.add('credits', credit);
-                                importedCount++;
-                            } catch (creditError) {
-                                console.error('Erreur import crédit:', creditError);
-                                skippedCount++;
-                            }
-                        }
-                        
-                        await this.loadCredits();
-                        this.showNotification(`✅ Import terminé : ${importedCount} importé(s), ${skippedCount} ignoré(s)`, 'success');
-                        
-                    } catch (error) {
-                        this.showNotification('❌ Fichier JSON invalide', 'error');
-                    }
-                };
-                
-                reader.readAsText(file);
-            };
-            
-            document.body.appendChild(fileInput);
-            fileInput.click();
-            setTimeout(() => document.body.removeChild(fileInput), 1000);
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'import', 'error');
-        }
-    }
-
-    async exportCredits() {
-        try {
-            if (this.filteredCredits.length === 0) {
-                this.showNotification('❌ Aucun crédit à exporter', 'warning');
-                return;
-            }
-            
-            const exportData = this.filteredCredits.map(credit => ({
-                id: credit.id,
-                saleId: credit.saleId,
-                customerId: credit.customerId,
-                customerName: credit.customerName,
-                amount: credit.amount,
-                discount: credit.discount || 0,
-                subtotal: credit.subtotal || credit.amount,
-                remaining: credit.remaining,
-                paid: credit.paid || 0,
-                status: credit.status,
-                dueDate: credit.dueDate,
-                description: credit.description,
-                paymentHistory: credit.paymentHistory,
-                created_at: credit.created_at
-            }));
-
-            const jsonContent = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            
-            const date = new Date().toISOString().split('T')[0];
-            link.download = `credits_${date}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
-            this.showNotification(`✅ Export réussi ! ${exportData.length} crédit(s) exporté(s)`, 'success');
-            
-        } catch (error) {
-            console.error('Erreur export:', error);
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    showNotification(message, type = 'info') {
-        if (window.app) {
-            window.app.showNotification(message, type);
-        }
-    }
-}
-
-// ==================== CHARGE MANAGER ====================
-class ChargeManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.charges = [];
-        this.filteredCharges = [];
-        this.currentSort = { column: 'date', direction: 'desc' };
-        this.initEventListeners();
-    }
-
-    initEventListeners() {
-        const addBtn = document.getElementById('addChargeBtn');
-        const cancelBtn = document.getElementById('cancelChargeBtn');
-        const form = document.getElementById('chargeForm');
-        const importBtn = document.getElementById('importChargesBtn');
-        const exportBtn = document.getElementById('exportChargesBtn');
-        const listBtn = document.getElementById('listChargesBtn');
-        const applyFilterBtn = document.getElementById('applyChargeFilter');
-        const searchInput = document.getElementById('chargeSearch');
-        const sortableHeaders = document.querySelectorAll('#chargesTable th.sortable');
-
-        if (addBtn) addBtn.addEventListener('click', () => this.showAddForm());
-        if (cancelBtn) cancelBtn.addEventListener('click', () => this.hideAddForm());
-        if (form) form.addEventListener('submit', (e) => this.handleAddCharge(e));
-        if (importBtn) importBtn.addEventListener('click', () => this.importCharges());
-        if (exportBtn) exportBtn.addEventListener('click', () => this.exportCharges());
-        if (listBtn) listBtn.addEventListener('click', () => this.loadCharges());
-        if (applyFilterBtn) applyFilterBtn.addEventListener('click', () => this.applyFilters());
-        if (searchInput) searchInput.addEventListener('input', () => this.applyFilters());
-
-        sortableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const column = header.dataset.sort;
-                this.sortCharges(column);
-            });
-        });
-
-        const chargesModal = document.getElementById('chargesModal');
-        if (chargesModal) {
-            chargesModal.addEventListener('hidden.bs.modal', () => {
-                this.hideAddForm();
-            });
-            chargesModal.addEventListener('shown.bs.modal', () => {
-                this.loadCharges();
-            });
-        }
-    }
-
-    showAddForm() {
-        const formCard = document.getElementById('chargeFormCard');
-        const labelInput = document.getElementById('chargeLabel');
-        
-        if (formCard) {
-            formCard.style.display = 'block';
-            if (labelInput) labelInput.focus();
-            
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('chargeDate').value = today;
-        }
-    }
-
-    hideAddForm() {
-        const formCard = document.getElementById('chargeFormCard');
-        const form = document.getElementById('chargeForm');
-        
-        if (formCard) formCard.style.display = 'none';
-        if (form) form.reset();
-    }
-
-    async loadCharges() {
-        try {
-            this.charges = await this.db.getAll('charges') || [];
-            this.applyFilters();
-            this.updateStats();
-            console.log('✅ Charges chargées depuis IndexedDB:', this.charges.length);
-        } catch (error) {
-            console.error('❌ Erreur chargement charges:', error);
-            this.charges = [];
-            this.filteredCharges = [];
-        }
-    }
-
-    applyFilters() {
-        const filter = document.getElementById('chargeDateFilter')?.value || 'all';
-        const searchTerm = document.getElementById('chargeSearch')?.value.toLowerCase() || '';
-
-        this.filteredCharges = this.filterChargesByDate(this.charges, filter);
-
-        if (searchTerm) {
-            this.filteredCharges = this.filteredCharges.filter(charge => 
-                (charge.label && charge.label.toLowerCase().includes(searchTerm)) ||
-                (charge.category && charge.category.toLowerCase().includes(searchTerm)) ||
-                (charge.supplier && charge.supplier.toLowerCase().includes(searchTerm)) ||
-                (charge.description && charge.description.toLowerCase().includes(searchTerm))
-            );
-        }
-
-        this.sortCharges(this.currentSort.column, true);
-        this.renderChargesTable();
-        this.updateStats();
-    }
-
-    filterChargesByDate(charges, filter) {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const filters = {
-            'today': (date) => date >= today,
-            'yesterday': (date) => date >= yesterday && date < today,
-            '1day': (date) => date >= new Date(today.getTime() - 1*24*60*60*1000),
-            '3days': (date) => date >= new Date(today.getTime() - 3*24*60*60*1000),
-            '1week': (date) => date >= new Date(today.getTime() - 7*24*60*60*1000),
-            '15days': (date) => date >= new Date(today.getTime() - 15*24*60*60*1000),
-            '1month': (date) => date >= new Date(today.getTime() - 30*24*60*60*1000),
-            '3months': (date) => date >= new Date(today.getTime() - 90*24*60*60*1000),
-            '6months': (date) => date >= new Date(today.getTime() - 180*24*60*60*1000),
-            '1year': (date) => date >= new Date(today.getTime() - 365*24*60*60*1000),
-            'all': () => true
-        };
-
-        const filterFn = filters[filter] || filters['all'];
-        
-        return charges.filter(charge => {
-            const chargeDate = charge.date ? new Date(charge.date) : new Date(0);
-            return filterFn(chargeDate);
-        });
-    }
-
-    sortCharges(column, skipToggle = false) {
-        if (!skipToggle && column === this.currentSort.column) {
-            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-            this.currentSort.column = column;
-            this.currentSort.direction = 'desc';
-        }
-
-        document.querySelectorAll('#chargesTable th.sortable i').forEach(icon => {
-            icon.className = 'fas fa-sort ms-1';
-        });
-
-        const currentHeader = document.querySelector(`#chargesTable th.sortable[data-sort="${column}"] i`);
-        if (currentHeader) {
-            currentHeader.className = `fas fa-sort-${this.currentSort.direction === 'asc' ? 'up' : 'down'} ms-1`;
-        }
-
-        this.filteredCharges.sort((a, b) => {
-            let valA, valB;
-
-            switch(column) {
-                case 'id':
-                    valA = a.id || 0;
-                    valB = b.id || 0;
-                    break;
-                case 'label':
-                    valA = a.label || '';
-                    valB = b.label || '';
-                    break;
-                case 'category':
-                    valA = a.category || '';
-                    valB = b.category || '';
-                    break;
-                case 'amount':
-                    valA = a.amount || 0;
-                    valB = b.amount || 0;
-                    break;
-                case 'date':
-                    valA = a.date ? new Date(a.date) : new Date(0);
-                    valB = b.date ? new Date(b.date) : new Date(0);
-                    break;
-                case 'paymentMethod':
-                    valA = a.paymentMethod || '';
-                    valB = b.paymentMethod || '';
-                    break;
-                default:
-                    valA = a.date ? new Date(a.date) : new Date(0);
-                    valB = b.date ? new Date(b.date) : new Date(0);
-            }
-
-            if (valA < valB) return this.currentSort.direction === 'asc' ? -1 : 1;
-            if (valA > valB) return this.currentSort.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        this.renderChargesTable();
-    }
-
-    updateStats() {
-        const totalCharges = this.filteredCharges.length;
-        const totalAmount = this.filteredCharges.reduce((sum, charge) => sum + (charge.amount || 0), 0);
-        
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthlyCharges = this.charges
-            .filter(charge => {
-                const chargeDate = charge.date ? new Date(charge.date) : new Date(0);
-                return chargeDate >= startOfMonth;
-            })
-            .reduce((sum, charge) => sum + (charge.amount || 0), 0);
-
-        document.getElementById('totalCharges').textContent = totalCharges;
-        document.getElementById('totalChargesAmount').textContent = `${totalAmount.toFixed(2)} DH`;
-        document.getElementById('monthlyCharges').textContent = `${monthlyCharges.toFixed(2)} DH`;
-        document.getElementById('totalChargesCount').textContent = totalCharges;
-    }
-
-    renderChargesTable() {
-        const tbody = document.getElementById('chargesTableBody');
-        if (!tbody) return;
-
-        if (this.filteredCharges.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4">Aucune charge trouvée</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = this.filteredCharges.map(charge => `
-            <tr>
-                <td class="px-4 py-3">
-                    <span class="badge bg-light text-dark">#${charge.id}</span>
-                </td>
-                <td class="px-4 py-3">${charge.label || '-'}</td>
-                <td class="px-4 py-3">
-                    <span class="badge bg-info text-white">${charge.category || 'AUTRE'}</span>
-                </td>
-                <td class="px-4 py-3 text-end fw-bold ${charge.amount > 0 ? 'text-danger' : ''}">${(charge.amount || 0).toFixed(2)} DH</td>
-                <td class="px-4 py-3">${charge.date ? new Date(charge.date).toLocaleDateString() : '-'}</td>
-                <td class="px-4 py-3">${charge.paymentMethod || '-'}</td>
-                <td class="px-4 py-3">${charge.supplier || '-'}</td>
-                <td class="px-4 py-3">${charge.reference || '-'}</td>
-                <td class="px-4 py-3">${charge.description ? charge.description.substring(0, 30) + (charge.description.length > 30 ? '...' : '') : '-'}</td>
-                <td class="px-4 py-3 text-center">
-                    <button class="btn-action btn-edit me-1" onclick="window.chargeManager.editCharge(${charge.id})" title="Modifier">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-action btn-delete" onclick="window.chargeManager.deleteCharge(${charge.id})" title="Supprimer">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    async handleAddCharge(e) {
-        e.preventDefault();
-        
-        const label = document.getElementById('chargeLabel')?.value.trim();
-        const category = document.getElementById('chargeCategory')?.value;
-        const amount = parseFloat(document.getElementById('chargeAmount')?.value) || 0;
-        const date = document.getElementById('chargeDate')?.value;
-        const paymentMethod = document.getElementById('chargePaymentMethod')?.value;
-        const supplier = document.getElementById('chargeSupplier')?.value.trim() || '';
-        const reference = document.getElementById('chargeReference')?.value.trim() || '';
-        const description = document.getElementById('chargeDescription')?.value.trim() || '';
-
-        if (!label) {
-            this.showNotification('Veuillez entrer un libellé', 'warning');
-            return;
-        }
-
-        if (!category) {
-            this.showNotification('Veuillez sélectionner une catégorie', 'warning');
-            return;
-        }
-
-        if (amount <= 0) {
-            this.showNotification('Veuillez entrer un montant valide', 'warning');
-            return;
-        }
-
-        if (!date) {
-            this.showNotification('Veuillez sélectionner une date', 'warning');
-            return;
-        }
-
-        try {
-            const newCharge = {
-                label: label.toUpperCase(),
-                category: category,
-                amount: amount,
-                date: date,
-                paymentMethod: paymentMethod,
-                supplier: supplier.toUpperCase(),
-                reference: reference,
-                description: description,
-                created_at: new Date()
-            };
-
-            await this.db.add('charges', newCharge);
-            await this.loadCharges();
-            
-            this.hideAddForm();
-            this.showNotification(`✅ Charge "${label}" ajoutée avec succès`, 'success');
-        } catch (error) {
-            console.error('Erreur ajout charge:', error);
-            this.showNotification('❌ Erreur lors de l\'ajout de la charge', 'error');
-        }
-    }
-
-    async editCharge(id) {
-        const charge = this.charges.find(c => c.id === id);
-        if (charge) {
-            document.getElementById('chargeLabel').value = charge.label || '';
-            document.getElementById('chargeCategory').value = charge.category || '';
-            document.getElementById('chargeAmount').value = charge.amount || 0;
-            document.getElementById('chargeDate').value = charge.date ? charge.date.split('T')[0] : '';
-            document.getElementById('chargePaymentMethod').value = charge.paymentMethod || 'ESPÈCES';
-            document.getElementById('chargeSupplier').value = charge.supplier || '';
-            document.getElementById('chargeReference').value = charge.reference || '';
-            document.getElementById('chargeDescription').value = charge.description || '';
-            
-            this.showAddForm();
-            
-            const form = document.getElementById('chargeForm');
-            if (form) {
-                form.onsubmit = (e) => {
-                    e.preventDefault();
-                    this.updateCharge(id);
-                };
-            }
-        }
-    }
-
-    async updateCharge(id) {
-        const label = document.getElementById('chargeLabel')?.value.trim();
-        const category = document.getElementById('chargeCategory')?.value;
-        const amount = parseFloat(document.getElementById('chargeAmount')?.value) || 0;
-        const date = document.getElementById('chargeDate')?.value;
-        const paymentMethod = document.getElementById('chargePaymentMethod')?.value;
-        const supplier = document.getElementById('chargeSupplier')?.value.trim() || '';
-        const reference = document.getElementById('chargeReference')?.value.trim() || '';
-        const description = document.getElementById('chargeDescription')?.value.trim() || '';
-
-        if (!label) {
-            this.showNotification('Veuillez entrer un libellé', 'warning');
-            return;
-        }
-
-        if (!category) {
-            this.showNotification('Veuillez sélectionner une catégorie', 'warning');
-            return;
-        }
-
-        if (amount <= 0) {
-            this.showNotification('Veuillez entrer un montant valide', 'warning');
-            return;
-        }
-
-        if (!date) {
-            this.showNotification('Veuillez sélectionner une date', 'warning');
-            return;
-        }
-
-        try {
-            const charge = this.charges.find(c => c.id === id);
-            if (charge) {
-                charge.label = label.toUpperCase();
-                charge.category = category;
-                charge.amount = amount;
-                charge.date = date;
-                charge.paymentMethod = paymentMethod;
-                charge.supplier = supplier.toUpperCase();
-                charge.reference = reference;
-                charge.description = description;
-                
-                await this.db.update('charges', charge);
-                await this.loadCharges();
-                
-                this.hideAddForm();
-                this.showNotification('✅ Charge modifiée avec succès', 'success');
-            }
-        } catch (error) {
-            console.error('Erreur modification charge:', error);
-            this.showNotification('❌ Erreur lors de la modification', 'error');
-        }
-    }
-
-    async deleteCharge(id) {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette charge ?')) {
-            try {
-                await this.db.delete('charges', id);
-                await this.loadCharges();
-                this.showNotification('✅ Charge supprimée avec succès', 'success');
-            } catch (error) {
-                console.error('Erreur suppression charge:', error);
-                this.showNotification('❌ Erreur lors de la suppression', 'error');
-            }
-        }
-    }
-
-    async importCharges() {
-        try {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = '.json';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.name.endsWith('.json')) {
-                    this.showNotification('❌ Le fichier doit être au format JSON', 'error');
-                    return;
-                }
-
-                const reader = new FileReader();
-                
-                reader.onload = async (event) => {
-                    try {
-                        const jsonData = JSON.parse(event.target.result);
-                        
-                        if (!Array.isArray(jsonData)) {
-                            throw new Error('Le fichier doit contenir un tableau de charges');
-                        }
-                        
-                        let importedCount = 0;
-                        let skippedCount = 0;
-                        
-                        for (const charge of jsonData) {
-                            try {
-                                if (!charge.label || !charge.amount) {
-                                    skippedCount++;
-                                    continue;
-                                }
-                                
-                                await this.db.add('charges', charge);
-                                importedCount++;
-                            } catch (chargeError) {
-                                console.error('Erreur import charge:', chargeError);
-                                skippedCount++;
-                            }
-                        }
-                        
-                        await this.loadCharges();
-                        this.showNotification(`✅ Import terminé : ${importedCount} importée(s), ${skippedCount} ignorée(s)`, 'success');
-                        
-                    } catch (error) {
-                        this.showNotification('❌ Fichier JSON invalide', 'error');
-                    }
-                };
-                
-                reader.readAsText(file);
-            };
-            
-            document.body.appendChild(fileInput);
-            fileInput.click();
-            setTimeout(() => document.body.removeChild(fileInput), 1000);
-            
-        } catch (error) {
-            this.showNotification('❌ Erreur lors de l\'import', 'error');
-        }
-    }
-
-    async exportCharges() {
-        try {
-            if (this.filteredCharges.length === 0) {
-                this.showNotification('❌ Aucune charge à exporter', 'warning');
-                return;
-            }
-            
-            const exportData = this.filteredCharges.map(charge => ({
-                id: charge.id,
-                label: charge.label,
-                category: charge.category,
-                amount: charge.amount,
-                date: charge.date,
-                paymentMethod: charge.paymentMethod,
-                supplier: charge.supplier,
-                reference: charge.reference,
-                description: charge.description,
-                created_at: charge.created_at
-            }));
-
-            const jsonContent = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            
-            const date = new Date().toISOString().split('T')[0];
-            link.download = `charges_${date}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
-            this.showNotification(`✅ Export réussi ! ${exportData.length} charge(s) exportée(s)`, 'success');
-            
-        } catch (error) {
-            console.error('Erreur export:', error);
-            this.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-
-    showNotification(message, type = 'info') {
-        if (window.app) {
-            window.app.showNotification(message, type);
-        }
-    }
-}
-
-// ==================== STATISTICS MANAGER ====================
-class StatisticsManager {
-    constructor() {
-        this.db = window.minimarketDB;
-        this.charts = {};
-        this.currentPeriod = 'today';
-        this.currentScale = 'day';
-        this.salesData = [];
-        this.creditsData = [];
-        this.customersData = [];
-        this.productsData = [];
-        this.initEventListeners();
-    }
-
-    initEventListeners() {
-        const applyFilter = document.getElementById('applyStatisticsFilter');
-        const periodSelect = document.getElementById('statisticsPeriod');
-        const exportBtn = document.getElementById('exportStatisticsBtn');
-        const scaleToggles = document.querySelectorAll('#chartScaleToggle .btn');
-
-        if (applyFilter) {
-            applyFilter.addEventListener('click', () => {
-                this.currentPeriod = periodSelect.value;
-                this.loadStatistics();
-            });
-        }
-
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => this.exportStatistics());
-        }
-
-        scaleToggles.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                scaleToggles.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.currentScale = btn.dataset.scale;
-                this.updateChartScale();
-            });
-        });
-
-        const modal = document.getElementById('statisticsModal');
-        if (modal) {
-            modal.addEventListener('shown.bs.modal', () => {
-                this.loadStatistics();
-            });
-        }
-    }
-
-    async loadStatistics() {
-        window.app.showLoading();
-        
-        try {
-            await this.loadData();
-            this.updateDateRange();
-            this.updateKPIs();
-            this.updateCharts();
-            this.updateTopCustomers();
-            this.updateTopProducts();
-            this.updateDetailedStats();
-            
-            document.getElementById('statLastUpdate').textContent = new Date().toLocaleString();
-            
-        } catch (error) {
-            console.error('Erreur chargement statistiques:', error);
-            window.app.showNotification('Erreur lors du chargement des statistiques', 'error');
-        }
-        
-        window.app.hideLoading();
-    }
-
-    async loadData() {
-        const [sales, credits, customers, products] = await Promise.all([
-            this.db.getAll('sales'),
-            this.db.getAll('credits'),
-            this.db.getAll('customers'),
-            this.db.getAll('products')
-        ]);
-
-        const dateFilter = this.getDateFilter();
-        
-        this.salesData = sales.filter(sale => dateFilter(new Date(sale.date)));
-        this.creditsData = credits.filter(credit => dateFilter(new Date(credit.created_at)));
-        this.customersData = customers;
-        this.productsData = products;
-    }
-
-    getDateFilter() {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        const filters = {
-            'today': (date) => date >= today,
-            '1day': (date) => date >= new Date(today.getTime() - 1*24*60*60*1000),
-            '3days': (date) => date >= new Date(today.getTime() - 3*24*60*60*1000),
-            '1week': (date) => date >= new Date(today.getTime() - 7*24*60*60*1000),
-            '15days': (date) => date >= new Date(today.getTime() - 15*24*60*60*1000),
-            '1month': (date) => date >= new Date(today.getTime() - 30*24*60*60*1000),
-            '3months': (date) => date >= new Date(today.getTime() - 90*24*60*60*1000),
-            '6months': (date) => date >= new Date(today.getTime() - 180*24*60*60*1000),
-            '1year': (date) => date >= new Date(today.getTime() - 365*24*60*60*1000),
-            'all': () => true
-        };
-
-        return filters[this.currentPeriod] || filters['today'];
-    }
-
-    updateDateRange() {
-        const rangeSpan = document.getElementById('statisticsDateRange');
-        const now = new Date();
-        const startDate = this.getStartDate();
-        
-        const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
-        const startStr = startDate.toLocaleDateString('fr-FR', options);
-        const endStr = now.toLocaleDateString('fr-FR', options);
-        
-        rangeSpan.innerHTML = `<i class="far fa-calendar-alt me-2"></i>${startStr} - ${endStr}`;
-    }
-
-    getStartDate() {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        const offsets = {
-            'today': 0,
-            '1day': 1,
-            '3days': 3,
-            '1week': 7,
-            '15days': 15,
-            '1month': 30,
-            '3months': 90,
-            '6months': 180,
-            '1year': 365,
-            'all': 3650
-        };
-
-        const days = offsets[this.currentPeriod] || 0;
-        return new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
-    }
-
-    updateKPIs() {
-        const totalRevenue = this.salesData.reduce((sum, sale) => sum + (sale.total || 0), 0);
-        const totalProfit = this.salesData.reduce((sum, sale) => {
-            const saleProfit = sale.items ? sale.items.reduce((itemSum, item) => itemSum + (item.profit || 0), 0) : 0;
-            return sum + saleProfit;
-        }, 0);
-        
-        const totalItems = this.salesData.reduce((sum, sale) => {
-            const items = sale.items ? sale.items.reduce((itemSum, item) => itemSum + (item.quantity || 0), 0) : 0;
-            return sum + items;
-        }, 0);
-
-        const activeCredits = this.creditsData.filter(c => c.status === 'active');
-        const totalActiveCredits = activeCredits.reduce((sum, c) => sum + (c.remaining || c.amount || 0), 0);
-        
-        const previousPeriodRevenue = this.calculatePreviousPeriodRevenue();
-        const revenueTrend = previousPeriodRevenue > 0 ? ((totalRevenue - previousPeriodRevenue) / previousPeriodRevenue * 100).toFixed(1) : 0;
-        
-        const margin = totalRevenue > 0 ? (totalProfit / totalRevenue * 100).toFixed(1) : 0;
-        
-        const days = this.getPeriodDays();
-        const avgPerDay = days > 0 ? (totalItems / days).toFixed(1) : 0;
-
-        document.getElementById('statTotalRevenue').textContent = `${totalRevenue.toFixed(2)} DH`;
-        document.getElementById('statTotalProfit').textContent = `${totalProfit.toFixed(2)} DH`;
-        document.getElementById('statTotalItems').textContent = totalItems;
-        document.getElementById('statActiveCredits').textContent = `${totalActiveCredits.toFixed(2)} DH`;
-
-        const trendSpan = document.getElementById('statRevenueTrend');
-        trendSpan.innerHTML = revenueTrend >= 0 ? 
-            `<i class="fas fa-arrow-up text-success me-1"></i>+${revenueTrend}%` : 
-            `<i class="fas fa-arrow-down text-danger me-1"></i>${revenueTrend}%`;
-
-        document.getElementById('statProfitTrend').innerHTML = `<i class="fas fa-chart-line me-1"></i>${margin}% marge`;
-        document.getElementById('statItemsAvg').innerHTML = `<i class="fas fa-calculator me-1"></i>Moy: ${avgPerDay}/jour`;
-        document.getElementById('statCreditCount').innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${activeCredits.length} crédits actifs`;
-    }
-
-    calculatePreviousPeriodRevenue() {
-        const endDate = this.getStartDate();
-        const startDate = new Date(endDate);
-        const days = this.getPeriodDays();
-        startDate.setDate(startDate.getDate() - days);
-
-        const previousSales = this.salesData.filter(sale => {
-            const saleDate = new Date(sale.date);
-            return saleDate >= startDate && saleDate < endDate;
-        });
-
-        return previousSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-    }
-
-    getPeriodDays() {
-        const offsets = {
-            'today': 1,
-            '1day': 1,
-            '3days': 3,
-            '1week': 7,
-            '15days': 15,
-            '1month': 30,
-            '3months': 90,
-            '6months': 180,
-            '1year': 365,
-            'all': 365
-        };
-        return offsets[this.currentPeriod] || 1;
-    }
-
-    updateCharts() {
-        this.updateSalesCreditChart();
-        this.updatePaymentMethodChart();
-    }
-
-    updateSalesCreditChart() {
-        const ctx = document.getElementById('salesCreditChart').getContext('2d');
-        
-        const groupedData = this.groupDataByPeriod();
-        
-        if (this.charts.salesCredit) {
-            this.charts.salesCredit.destroy();
-        }
-
-        this.charts.salesCredit = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: groupedData.labels,
-                datasets: [
-                    {
-                        label: 'Ventes (DH)',
-                        data: groupedData.sales,
-                        borderColor: '#000000',
-                        backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                        borderWidth: 2,
-                        pointBackgroundColor: '#000000',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        tension: 0.3,
-                        fill: true
-                    },
-                    {
-                        label: 'Crédits (DH)',
-                        data: groupedData.credits,
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                        borderWidth: 2,
-                        pointBackgroundColor: '#2ecc71',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        tension: 0.3,
-                        fill: true
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            boxWidth: 8,
-                            font: {
-                                size: 12,
-                                weight: '500'
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleColor: '#ffffff',
-                        bodyColor: '#ffffff',
-                        borderColor: '#2ecc71',
-                        borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 8,
-                        displayColors: true,
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} DH`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return value + ' DH';
-                            },
-                            font: {
-                                size: 11
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 11
-                            },
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
-                    }
-                },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                elements: {
-                    line: {
-                        borderJoinStyle: 'round'
-                    }
-                }
-            }
-        });
-        
-        if (this.charts.salesCredit.legend) {
-            const legendItems = this.charts.salesCredit.legend.legendItems;
-            if (legendItems && legendItems.length >= 2) {
-                legendItems[0].fillStyle = '#000000';
-                legendItems[0].strokeStyle = '#000000';
-                legendItems[1].fillStyle = '#2ecc71';
-                legendItems[1].strokeStyle = '#2ecc71';
-            }
-        }
-    }
-
-    groupDataByPeriod() {
-        const labels = [];
-        const sales = [];
-        const credits = [];
-        
-        const startDate = this.getStartDate();
-        const endDate = new Date();
-        
-        if (this.currentScale === 'day' && this.currentPeriod === 'today') {
-            for (let hour = 0; hour < 24; hour++) {
-                const hourStart = new Date();
-                hourStart.setHours(hour, 0, 0, 0);
-                const hourEnd = new Date();
-                hourEnd.setHours(hour, 59, 59, 999);
-                
-                labels.push(`${hour}h`);
-                
-                const hourSales = this.salesData.filter(sale => {
-                    const saleDate = new Date(sale.date);
-                    return saleDate >= hourStart && saleDate <= hourEnd;
-                });
-                
-                const hourCredits = this.creditsData.filter(credit => {
-                    const creditDate = new Date(credit.created_at);
-                    return creditDate >= hourStart && creditDate <= hourEnd && credit.status === 'active';
-                });
-                
-                sales.push(hourSales.reduce((sum, s) => sum + (s.total || 0), 0));
-                credits.push(hourCredits.reduce((sum, c) => sum + (c.remaining || c.amount || 0), 0));
-            }
-        } 
-        else if (this.currentScale === 'day' || this.currentPeriod === '1week' || this.currentPeriod === '15days') {
-            const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-            for (let i = 0; i < days; i++) {
-                const date = new Date(startDate);
-                date.setDate(date.getDate() + i);
-                const nextDate = new Date(date);
-                nextDate.setDate(nextDate.getDate() + 1);
-                
-                labels.push(date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));
-                
-                const daySales = this.salesData.filter(sale => {
-                    const saleDate = new Date(sale.date);
-                    return saleDate >= date && saleDate < nextDate;
-                });
-                
-                const dayCredits = this.creditsData.filter(credit => {
-                    const creditDate = new Date(credit.created_at);
-                    return creditDate >= date && creditDate < nextDate && credit.status === 'active';
-                });
-                
-                sales.push(daySales.reduce((sum, s) => sum + (s.total || 0), 0));
-                credits.push(dayCredits.reduce((sum, c) => sum + (c.remaining || c.amount || 0), 0));
-            }
-        } 
-        else {
-            const months = [];
-            let currentDate = new Date(startDate);
-            
-            while (currentDate <= endDate) {
-                const monthKey = currentDate.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
-                months.push(monthKey);
-                
-                const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-                const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
-                
-                const monthSales = this.salesData.filter(sale => {
-                    const saleDate = new Date(sale.date);
-                    return saleDate >= monthStart && saleDate <= monthEnd;
-                });
-                
-                const monthCredits = this.creditsData.filter(credit => {
-                    const creditDate = new Date(credit.created_at);
-                    return creditDate >= monthStart && creditDate <= monthEnd && credit.status === 'active';
-                });
-                
-                sales.push(monthSales.reduce((sum, s) => sum + (s.total || 0), 0));
-                credits.push(monthCredits.reduce((sum, c) => sum + (c.remaining || c.amount || 0), 0));
-                
-                currentDate.setMonth(currentDate.getMonth() + 1);
-            }
-            
-            labels.push(...months);
-        }
-        
-        return { labels, sales, credits };
-    }
-
-    updatePaymentMethodChart() {
-        const ctx = document.getElementById('paymentMethodChart').getContext('2d');
-        
-        const cashSales = this.salesData.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.total || 0), 0);
-        const creditSales = this.salesData.filter(s => s.paymentMethod === 'credit' || s.paymentMethod === 'partial').reduce((sum, s) => sum + (s.total || 0), 0);
-        
-        if (this.charts.paymentMethod) {
-            this.charts.paymentMethod.destroy();
-        }
-
-        this.charts.paymentMethod = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Espèces', 'Crédit'],
-                datasets: [{
-                    data: [cashSales, creditSales],
-                    backgroundColor: [
-                        '#000000',
-                        '#2ecc71'
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '65%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            boxWidth: 8,
-                            padding: 20,
-                            font: {
-                                size: 12,
-                                weight: '500'
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleColor: '#ffffff',
-                        bodyColor: '#ffffff',
-                        borderColor: '#2ecc71',
-                        borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.raw;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return `${context.label}: ${value.toFixed(2)} DH (${percentage}%)`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        
-        if (this.charts.paymentMethod.legend) {
-            const legendItems = this.charts.paymentMethod.legend.legendItems;
-            if (legendItems && legendItems.length >= 2) {
-                legendItems[0].fillStyle = '#000000';
-                legendItems[0].strokeStyle = '#000000';
-                legendItems[1].fillStyle = '#2ecc71';
-                legendItems[1].strokeStyle = '#2ecc71';
-            }
-        }
-    }
-
-    updateTopCustomers() {
-        const tbody = document.getElementById('topCustomersBody');
-        
-        const customerStats = {};
-        
-        this.salesData.forEach(sale => {
-            if (sale.customerId) {
-                if (!customerStats[sale.customerId]) {
-                    customerStats[sale.customerId] = {
-                        name: sale.customerName || `Client #${sale.customerId}`,
-                        revenue: 0,
-                        profit: 0,
-                        count: 0
-                    };
-                }
-                
-                const saleProfit = sale.items ? sale.items.reduce((sum, item) => sum + (item.profit || 0), 0) : 0;
-                
-                customerStats[sale.customerId].revenue += sale.total || 0;
-                customerStats[sale.customerId].profit += saleProfit;
-                customerStats[sale.customerId].count++;
-            }
-        });
-        
-        const topCustomers = Object.values(customerStats)
-            .sort((a, b) => b.revenue - a.revenue)
-            .slice(0, 5);
-        
-        if (topCustomers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">Aucune donnée</td></tr>';
-        } else {
-            tbody.innerHTML = topCustomers.map(cust => `
-                <tr>
-                    <td>${cust.name}</td>
-                    <td class="text-end">${cust.revenue.toFixed(2)} DH</td>
-                    <td class="text-end text-success">${cust.profit.toFixed(2)} DH</td>
-                    <td class="text-center">${cust.count}</td>
-                </tr>
-            `).join('');
-        }
-    }
-
-    updateTopProducts() {
-        const tbody = document.getElementById('topProductsBody');
-        
-        const productStats = {};
-        
-        this.salesData.forEach(sale => {
-            if (sale.items) {
-                sale.items.forEach(item => {
-                    const productName = item.productName || `Produit #${item.productId}`;
-                    
-                    if (!productStats[productName]) {
-                        productStats[productName] = {
-                            name: productName,
-                            quantity: 0,
-                            revenue: 0,
-                            profit: 0
-                        };
-                    }
-                    
-                    productStats[productName].quantity += item.quantity || 0;
-                    productStats[productName].revenue += item.total || 0;
-                    productStats[productName].profit += item.profit || 0;
-                });
-            }
-        });
-        
-        const topProducts = Object.values(productStats)
-            .sort((a, b) => b.revenue - a.revenue)
-            .slice(0, 5);
-        
-        if (topProducts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">Aucune donnée</td></tr>';
-        } else {
-            tbody.innerHTML = topProducts.map(prod => `
-                <tr>
-                    <td>${prod.name}</td>
-                    <td class="text-center">${prod.quantity}</td>
-                    <td class="text-end">${prod.revenue.toFixed(2)} DH</td>
-                    <td class="text-end text-success">${prod.profit.toFixed(2)} DH</td>
-                </tr>
-            `).join('');
-        }
-    }
-
-    updateDetailedStats() {
-        const salesCount = this.salesData.length;
-        const totalRevenue = this.salesData.reduce((sum, s) => sum + (s.total || 0), 0);
-        const avgTicket = salesCount > 0 ? totalRevenue / salesCount : 0;
-        
-        const cashSales = this.salesData.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + (s.total || 0), 0);
-        const creditSales = this.salesData.filter(s => s.paymentMethod === 'credit' || s.paymentMethod === 'partial').reduce((sum, s) => sum + (s.total || 0), 0);
-        
-        const totalDiscount = this.salesData.reduce((sum, s) => sum + (s.discount || 0), 0);
-        
-        const totalProfit = this.salesData.reduce((sum, s) => {
-            const saleProfit = s.items ? s.items.reduce((itemSum, item) => itemSum + (item.profit || 0), 0) : 0;
-            return sum + saleProfit;
-        }, 0);
-        
-        const margin = totalRevenue > 0 ? (totalProfit / totalRevenue * 100).toFixed(1) : 0;
-
-        document.getElementById('statSalesCount').textContent = salesCount;
-        document.getElementById('statAvgTicket').textContent = `${avgTicket.toFixed(2)} DH`;
-        document.getElementById('statCashSales').textContent = `${cashSales.toFixed(2)} DH`;
-        document.getElementById('statCreditSales').textContent = `${creditSales.toFixed(2)} DH`;
-        document.getElementById('statTotalDiscount').textContent = `${totalDiscount.toFixed(2)} DH`;
-        document.getElementById('statMargin').textContent = `${margin}%`;
-
-        const unpaidCredits = this.creditsData.filter(c => c.status === 'active').length;
-        const totalDue = this.creditsData.filter(c => c.status === 'active').reduce((sum, c) => sum + (c.remaining || c.amount || 0), 0);
-        const overdueCredits = this.creditsData.filter(c => c.status === 'active' && c.dueDate && new Date(c.dueDate) < new Date()).length;
-        const overdueAmount = this.creditsData.filter(c => c.status === 'active' && c.dueDate && new Date(c.dueDate) < new Date()).reduce((sum, c) => sum + (c.remaining || c.amount || 0), 0);
-        
-        const totalCreditsAmount = this.creditsData.reduce((sum, c) => sum + (c.amount || 0), 0);
-        const totalPaid = this.creditsData.reduce((sum, c) => {
-            if (c.paymentHistory && c.paymentHistory.length > 0) {
-                return sum + c.paymentHistory.reduce((pSum, p) => pSum + (p.amount || 0), 0);
-            }
-            return sum + (c.paid || 0);
-        }, 0);
-        const recoveryRate = totalCreditsAmount > 0 ? (totalPaid / totalCreditsAmount * 100).toFixed(1) : 0;
-
-        document.getElementById('statUnpaidCredits').textContent = unpaidCredits;
-        document.getElementById('statTotalDue').textContent = `${totalDue.toFixed(2)} DH`;
-        document.getElementById('statOverdueCredits').textContent = overdueCredits;
-        document.getElementById('statOverdueAmount').textContent = `${overdueAmount.toFixed(2)} DH`;
-        document.getElementById('statRecoveryRate').textContent = `${recoveryRate}%`;
-
-        const activeCustomers = new Set(this.salesData.map(s => s.customerId).filter(id => id)).size;
-        const allCustomers = this.customersData.length;
-        const newCustomers = this.customersData.filter(c => {
-            const createdDate = new Date(c.created_at);
-            return this.getDateFilter()(createdDate);
-        }).length;
-        
-        const totalCustomerRevenue = this.salesData.reduce((sum, s) => sum + (s.total || 0), 0);
-        const totalCustomerProfit = this.salesData.reduce((sum, s) => {
-            const saleProfit = s.items ? s.items.reduce((itemSum, item) => itemSum + (item.profit || 0), 0) : 0;
-            return sum + saleProfit;
-        }, 0);
-        
-        const avgCustomerRevenue = activeCustomers > 0 ? totalCustomerRevenue / activeCustomers : 0;
-        const avgCustomerProfit = activeCustomers > 0 ? totalCustomerProfit / activeCustomers : 0;
-        
-        const loyaltyRate = allCustomers > 0 ? (activeCustomers / allCustomers * 100).toFixed(1) : 0;
-
-        document.getElementById('statActiveCustomers').textContent = activeCustomers;
-        document.getElementById('statNewCustomers').textContent = newCustomers;
-        document.getElementById('statAvgCustomerRevenue').textContent = `${avgCustomerRevenue.toFixed(2)} DH`;
-        document.getElementById('statAvgCustomerProfit').textContent = `${avgCustomerProfit.toFixed(2)} DH`;
-        document.getElementById('statLoyaltyRate').textContent = `${loyaltyRate}%`;
-    }
-
-    updateChartScale() {
-        this.updateSalesCreditChart();
-    }
-
-    async exportStatistics() {
-        try {
-            const reportData = {
-                periode: document.getElementById('statisticsDateRange').textContent,
-                generation: new Date().toISOString(),
-                kpis: {
-                    chiffre_affaires: document.getElementById('statTotalRevenue').textContent,
-                    profit: document.getElementById('statTotalProfit').textContent,
-                    articles_vendus: document.getElementById('statTotalItems').textContent,
-                    credits_actifs: document.getElementById('statActiveCredits').textContent
-                },
-                ventes: {
-                    nombre: document.getElementById('statSalesCount').textContent,
-                    ticket_moyen: document.getElementById('statAvgTicket').textContent,
-                    ventes_comptant: document.getElementById('statCashSales').textContent,
-                    ventes_credit: document.getElementById('statCreditSales').textContent,
-                    remises: document.getElementById('statTotalDiscount').textContent,
-                    marge: document.getElementById('statMargin').textContent
-                },
-                credits: {
-                    impayes: document.getElementById('statUnpaidCredits').textContent,
-                    total_du: document.getElementById('statTotalDue').textContent,
-                    en_retard: document.getElementById('statOverdueCredits').textContent,
-                    montant_retard: document.getElementById('statOverdueAmount').textContent,
-                    recouvrement: document.getElementById('statRecoveryRate').textContent
-                },
-                clients: {
-                    actifs: document.getElementById('statActiveCustomers').textContent,
-                    nouveaux: document.getElementById('statNewCustomers').textContent,
-                    ca_moyen: document.getElementById('statAvgCustomerRevenue').textContent,
-                    profit_moyen: document.getElementById('statAvgCustomerProfit').textContent,
-                    fidelite: document.getElementById('statLoyaltyRate').textContent
-                }
-            };
-
-            const jsonContent = JSON.stringify(reportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            
-            const date = new Date().toISOString().split('T')[0];
-            link.download = `statistiques_${date}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
-            window.app.showNotification('✅ Rapport exporté avec succès', 'success');
-            
-        } catch (error) {
-            console.error('Erreur export statistiques:', error);
-            window.app.showNotification('❌ Erreur lors de l\'export', 'error');
-        }
-    }
-}
-
-// Initialisation de l'application
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new MiniMarketApp();
 });
+});
+})
+.catch(err => {
+console.error('❌ Erreur SW:', err);
+// Afficher une notification visible
+const msg = document.createElement('div');
+msg.style.cssText = 'position:fixed;bottom:10px;left:10px;background:red;color:white;padding:5px;z-index:9999;font-size:12px;border-radius:5px;';
+msg.textContent = '⚠️ Mode hors ligne non disponible: ' + err.message;
+document.body.appendChild(msg);
+setTimeout(() => msg.remove(), 5000);
+});
+});
+
+// Rafraîchir quand le SW prend le contrôle
+let refreshing = false;
+navigator.serviceWorker.addEventListener('controllerchange', () => {
+if (refreshing) return;
+refreshing = true;
+console.log('🔄 Rechargement...');
+window.location.reload();
+});
+} else {
+console.warn('⚠️ Service Worker non supporté');
+}
+</script>
+<!-- Bibliothèque pour générer des PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</body>
+</html>
